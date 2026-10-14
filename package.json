@@ -1,0 +1,60 @@
+{
+  "name": "random-media-player",
+  "productName": "VJ Player",
+  "version": "1.0.0",
+  "description": "A fullscreen Electron media player that randomly plays through playlists of videos and images.",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "build:syphon": "node-gyp rebuild"
+  },
+  "author": "",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "electron": "^41.7.1",
+    "electron-builder": "^26.15.3",
+    "node-gyp": "^11.5.0",
+    "node-addon-api": "^3.2.1"
+  },
+  "dependencies": {
+    "p5": "^1.9.4"
+  },
+  "build": {
+    "appId": "com.example.vjplayer",
+    "productName": "VJ Player",
+    "files": [
+      "src/**/*",
+      "node_modules/p5/lib/p5.min.js",
+      "build/Release/syphon_addon.node",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.entertainment",
+      "target": "dmg",
+      "extraFiles": [
+        {
+          "from": "frameworks",
+          "to": "Frameworks"
+        }
+      ]
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "AudioVideo"
+    },
+    "asarUnpack": [
+      "build/Release/*.node"
+    ]
+  }
+}

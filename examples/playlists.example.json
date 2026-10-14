@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Kong",
+    "files": [
+      "visuals/reports/WaSeUMC_EMC4-178_AvalancheDynamics_uncorrected.mp4",
+      "visuals/wichtig/15.mp4",
+      "visuals/tech/clips4.mp4"
+    ]
+  },
+  { "name": "Space", "folder": "visuals/techbck" },
+  { "name": "Intro", "files": ["visuals/intro.mp4"], "full": true },
+  { "name": "Logo", "files": ["visuals/logo@contain.png"], "full": true },
+  { "name": "Everything", "folder": "." }
+]

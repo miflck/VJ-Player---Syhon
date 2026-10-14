@@ -1,0 +1,9 @@
+[
+  { "name": "Logo", "files": ["typo_weiss.png"], "full": true },
+  {
+    "name": "Kong",
+    "folder": "kong"
+  },
+  { "name": "Space", "folder": "visuals/techbck" },
+  { "name": "Everything", "folder": "." }
+]
