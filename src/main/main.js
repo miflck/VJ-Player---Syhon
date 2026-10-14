@@ -18,6 +18,17 @@ const configPath = path.join(userDataPath, "config.json");
 // Supported media extensions
 const MEDIA_EXTENSIONS = [".mp4", ".mov", ".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
+// p5 sketches are "<name>.sketch.js" or a "sketch.js" inside a folder named
+// after the sketch (other .js files are ignored)
+function isSketchFile(filename) {
+  const lower = path.basename(filename).toLowerCase();
+  return lower === "sketch.js" || lower.endsWith(".sketch.js");
+}
+
+function isMediaFile(filename) {
+  return MEDIA_EXTENSIONS.includes(path.extname(filename).toLowerCase()) || isSketchFile(filename);
+}
+
 // Name of the playlist config file that lives inside the assets folder
 const PLAYLISTS_FILENAME = "playlists.json";
 
@@ -78,7 +89,12 @@ function saveConfig() {
 
 // Recursively collect media files under basePath/relativeFolder.
 // Returns paths relative to basePath, using forward slashes.
-async function scanFolderForMedia(basePath, relativeFolder) {
+//
+// A folder that contains a sketch.js is a sketch: its sketch.js is added, and
+// everything else inside it (textures, data, ...) is not played as media. Other
+// sketches inside it (sub-folders with a sketch.js, or *.sketch.js files) are
+// still found, so a folder can hold several sketches that play in random order.
+async function scanFolderForMedia(basePath, relativeFolder, sketchesOnly = false) {
   const fullPath = path.join(basePath, relativeFolder);
   let entries;
 
@@ -89,16 +105,17 @@ async function scanFolderForMedia(basePath, relativeFolder) {
     return [];
   }
 
+  const toRelative = (name) => path.join(relativeFolder, name).split(path.sep).join("/");
+  const isSketchFolder = entries.some((entry) => entry.isFile() && entry.name.toLowerCase() === "sketch.js");
+  const onlySketches = sketchesOnly || isSketchFolder;
+
   let results = [];
 
   for (const entry of entries) {
-    const entryRelPath = path.join(relativeFolder, entry.name);
-
     if (entry.isDirectory()) {
-      const nested = await scanFolderForMedia(basePath, entryRelPath);
-      results = results.concat(nested);
-    } else if (entry.isFile() && MEDIA_EXTENSIONS.includes(path.extname(entry.name).toLowerCase())) {
-      results.push(entryRelPath.split(path.sep).join("/"));
+      results = results.concat(await scanFolderForMedia(basePath, path.join(relativeFolder, entry.name), onlySketches));
+    } else if (entry.isFile() && (onlySketches ? isSketchFile(entry.name) : isMediaFile(entry.name))) {
+      results.push(toRelative(entry.name));
     }
   }
 
@@ -114,9 +131,8 @@ async function resolveExplicitFiles(basePath, relativeFiles) {
     if (typeof relPath !== "string" || !relPath) continue;
 
     const normalized = relPath.split(path.sep).join("/");
-    const ext = path.extname(normalized).toLowerCase();
 
-    if (!MEDIA_EXTENSIONS.includes(ext)) {
+    if (!isMediaFile(normalized)) {
       console.warn(`Skipping "${normalized}" — not a supported media type`);
       continue;
     }

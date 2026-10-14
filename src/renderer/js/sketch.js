@@ -5,20 +5,22 @@
 //   config.js   shared config, app state, filename flags
 //   playlist.js playlists.json handling and random file picking
 //   player.js   media loading, playback, transitions
+//   sketches.js p5 sketch files as media
 //   ui.js       canvas rendering and settings screen
 //   syphon.js   Syphon output (macOS)
 //   sketch.js   p5 setup/draw, initialisation and input
 
 function setup() {
   pixelDensity(Config.PIXEL_DENSITY); // before createCanvas; also sets the Syphon output resolution
-  const canvas = createCanvas(windowWidth, windowHeight);
+  const canvas = createCanvas(1920, 1080);
   canvas.parent("sketch-container");
   initializeMediaPlayer();
 }
 
 function draw() {
-  const isPlayingVideo = Player.current && Player.current.isVideo && !App.isBlackedOut;
-  if (!isPlayingVideo && !App.needsRedraw) {
+  const current = Player.current;
+  const isAnimated = current && current.kind !== "image" && !App.isBlackedOut; // video or sketch
+  if (!isAnimated && !App.needsRedraw) {
     publishSyphon(false); // nothing changed on a still screen
     return;
   }
@@ -26,8 +28,9 @@ function draw() {
 
   background(0);
 
-  if (Player.current && !App.isBlackedOut) {
-    renderMedia(Player.current);
+  if (current && !App.isBlackedOut) {
+    if (current.kind === "sketch") stepSketch(current);
+    renderMedia(current);
   }
 
   if (App.showSettings) {

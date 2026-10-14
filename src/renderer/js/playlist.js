@@ -88,3 +88,9 @@ function pickRandomFile() {
   Playlist.lastPicked = picked;
   return picked;
 }
+
+// Full playback = whole video / image or sketch stays until skipped. Set for a
+// whole playlist ("full": true) or for single files with an @full filename flag.
+function isFullPlayback(filename) {
+  return Playlist.full || getFlags(filename).full;
+}

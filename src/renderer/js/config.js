@@ -36,7 +36,9 @@ function invalidate() {
 //
 //   clip@w5.mp4      → weight 5 (5x more likely to be picked; default 1)
 //   clip@contain.mp4 → letterbox instead of fill/crop (default "cover")
-//   clip@12s.mp4     → 12 second segment
+//   clip@full.mp4    → this file plays in full (video to its end, image/sketch until skipped), whatever the playlist says
+//   Name@15s/sketch.js → flags also work in the name of a sketch folder
+//   clip@12s.mp4     → 12 second segment (videos); how long an image or sketch stays (images, sketches)
 //   clip_x3.mp4      → 3x VIDEO_SEGMENT_TIME.min
 //   clip_LONG.mp4    → 3x VIDEO_SEGMENT_TIME.min
 // ----------------------------------------------------------------------------
@@ -44,7 +46,7 @@ function invalidate() {
 const flagCache = new Map();
 
 function getFlags(filename) {
-  if (!filename) return { isVideo: false, weight: 1, fit: "cover", duration: null };
+  if (!filename) return { kind: "image", weight: 1, fit: "cover", duration: null, full: false };
 
   let flags = flagCache.get(filename);
   if (!flags) {
@@ -65,9 +67,10 @@ function parseFlags(filename) {
   else if (filename.includes("_LONG")) duration = Config.VIDEO_SEGMENT_TIME.min * 3;
 
   return {
-    isVideo: /\.(mp4|mov)$/i.test(filename),
+    kind: /(^|[./])sketch\.js$/i.test(filename) ? "sketch" : /\.(mp4|mov)$/i.test(filename) ? "video" : "image",
     weight: weight > 0 ? weight : 1,
     fit: /@contain\b/i.test(filename) ? "contain" : "cover",
+    full: /@full\b/i.test(filename),
     duration,
   };
 }

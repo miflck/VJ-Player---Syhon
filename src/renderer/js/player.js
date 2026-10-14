@@ -1,6 +1,6 @@
 // Media loading, playback and transitions.
 //
-// Media is tracked as "slots": { media, filename, isVideo }.
+// Media is tracked as "slots": { media, filename, kind }, kind = "video" | "image" | "sketch".
 //   pending → being preloaded;  next → fully loaded, ready to play;  current → on screen.
 
 const Player = {
@@ -22,14 +22,16 @@ function preload() {
   if (!Playlist.files.length || Player.pending) return;
 
   const filename = pickRandomFile();
-  const slot = { media: null, filename, isVideo: getFlags(filename).isVideo };
+  const slot = { media: null, filename, kind: getFlags(filename).kind };
   const token = Player.loadToken;
 
   log(`Preloading: ${filename}`);
   Player.pending = slot;
 
-  if (slot.isVideo) {
+  if (slot.kind === "video") {
     loadVideo(slot, token);
+  } else if (slot.kind === "sketch") {
+    loadSketch(slot, token);
   } else {
     loadImage(
       buildMediaUrl(filename),
@@ -42,6 +44,24 @@ function preload() {
         handleLoadFailed(slot, token);
       },
     );
+  }
+}
+
+async function loadSketch(slot, token) {
+  try {
+    const url = buildMediaUrl(slot.filename);
+    const factory = await loadSketchFactory(url);
+    const instance = await createSketchInstance(factory, url);
+
+    if (token !== Player.loadToken) {
+      instance.remove(); // discarded while loading
+      return;
+    }
+    slot.media = instance;
+    handleLoaded(slot, token);
+  } catch (error) {
+    console.error(`Sketch "${slot.filename}" could not be loaded:`, error);
+    handleLoadFailed(slot, token);
   }
 }
 
@@ -75,7 +95,7 @@ async function prepareVideo(slot, token) {
   let segment = duration;
   let loop = false;
 
-  if (!Playlist.full) {
+  if (!isFullPlayback(slot.filename)) {
     segment = getFlags(slot.filename).duration ?? random(Config.VIDEO_SEGMENT_TIME.min, Config.VIDEO_SEGMENT_TIME.max);
     loop = segment > duration;
     start = loop ? 0 : random(0, duration - segment);
@@ -122,9 +142,9 @@ function handleLoadFailed(slot, token) {
 }
 
 function disposeMedia(slot) {
-  if (!slot || !slot.isVideo || !slot.media) return; // images need no cleanup
+  if (!slot || slot.kind === "image" || !slot.media) return; // images need no cleanup
   try {
-    slot.media.remove();
+    slot.media.remove(); // video: detaches the element; sketch: removes the p5 instance
   } catch (error) {
     console.warn("Error disposing media:", error);
   }
@@ -167,11 +187,12 @@ function advance() {
   Player.current = Player.next;
   Player.next = null;
 
-  if (Player.current.isVideo) {
+  if (Player.current.kind === "video") {
     playVideo(Player.current);
-  } else if (!Playlist.full) {
-    // "full" playlists show images indefinitely; the user has to move on manually.
-    scheduleAdvance(random(Config.IMAGE_DISPLAY_TIME.min, Config.IMAGE_DISPLAY_TIME.max));
+  } else if (!isFullPlayback(Player.current.filename)) {
+    // Images and sketches. "full" playlists show them indefinitely; the user has to move on manually.
+    const flagged = getFlags(Player.current.filename).duration;
+    scheduleAdvance(flagged ?? random(Config.IMAGE_DISPLAY_TIME.min, Config.IMAGE_DISPLAY_TIME.max));
   }
 
   preload();
@@ -182,16 +203,8 @@ function stopCurrent() {
   Player.playToken++; // invalidates callbacks belonging to the media being stopped
   clearTimer();
 
-  if (Player.current) {
-    if (Player.current.isVideo) {
-      try {
-        Player.current.media.remove(); // pauses and detaches the element
-      } catch (error) {
-        console.warn("Error stopping video:", error);
-      }
-    }
-    Player.current = null;
-  }
+  disposeMedia(Player.current);
+  Player.current = null;
 }
 
 function scheduleAdvance(seconds) {
