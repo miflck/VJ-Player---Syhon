@@ -18,6 +18,63 @@ body {
   overflow: hidden;
 }
 
+/* The canvas has a fixed output size (see Config.OUTPUT_WIDTH/HEIGHT). It is shown as
+   large as fits in the window, centred, with black bars; p5 sets inline pixel sizes,
+   hence !important. Keeping the element at the canvas' aspect ratio also keeps p5's
+   mouse coordinates right. */
+#sketch-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 #sketch-container canvas {
   display: block;
+  width: min(100vw, calc(100vh * var(--output-aspect, 1.7778))) !important;
+  height: auto !important;
+  aspect-ratio: var(--output-aspect, 1.7778);
 }
+
+/* ---- Settings panel ---- */
+#settings {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(8, 10, 14, 0.92);
+  color: #e8ecf1;
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+#settings[hidden] { display: none; }
+#settings .panel { width: min(560px, 100%); max-height: 100%; overflow-y: auto; padding: 4px; } /* room for focus outlines */
+#settings h1 { font-size: 20px; margin: 0 0 14px; }
+#settings h2 { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #8b97a5; margin: 0 0 8px; }
+#settings section { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #2a323d; }
+#settings p { margin: 0 0 8px; }
+#settings .path { color: #8b97a5; overflow-wrap: anywhere; }
+#settings .hint, #settings .keys { color: #8b97a5; font-size: 12px; }
+#settings .status { min-height: 1.4em; margin: 8px 0 0; }
+#settings .status.error { color: #ff7a5c; }
+#settings .status.ok { color: #3ddc97; }
+#settings button {
+  font: inherit; color: inherit; background: #161b22; border: 1px solid #2a323d; border-radius: 8px;
+  padding: 7px 14px; cursor: pointer;
+}
+#settings button:hover { border-color: #4a5666; }
+#settings button:focus-visible, #settings input:focus-visible { outline: 2px solid #ff5a36; outline-offset: 2px; }
+#settings button.primary { background: #ff5a36; border-color: #ff5a36; color: #fff; }
+#settings button[disabled], #settings input[disabled] { opacity: 0.4; cursor: default; }
+#settings .segmented { display: inline-flex; margin-bottom: 8px; }
+#settings .segmented button { border-radius: 0; min-width: 96px; }
+#settings .segmented button:first-child { border-radius: 8px 0 0 8px; }
+#settings .segmented button:last-child { border-radius: 0 8px 8px 0; margin-left: -1px; }
+#settings .segmented button[aria-pressed="true"] { background: #e8ecf1; color: #0d1014; border-color: #e8ecf1; position: relative; }
+#settings label { display: block; margin-bottom: 10px; color: #8b97a5; font-size: 12px; }
+#settings input {
+  display: block; width: 100%; margin-top: 4px; font: inherit; color: #e8ecf1; background: #0d1014;
+  border: 1px solid #2a323d; border-radius: 8px; padding: 8px 10px;
+}
+

@@ -6,15 +6,26 @@
 //   playlist.js playlists.json handling and random file picking
 //   player.js   media loading, playback, transitions
 //   sketches.js p5 sketch files as media
-//   ui.js       canvas rendering and settings screen
+//   ui.js       canvas rendering
+//   settings.js settings panel (HTML)
 //   syphon.js   Syphon output (macOS)
 //   remote.js   remote control over socket.io (commands in, state out)
 //   sketch.js   p5 setup/draw, initialisation and input
 
 function setup() {
   pixelDensity(Config.PIXEL_DENSITY); // before createCanvas; also sets the Syphon output resolution
-  const canvas = createCanvas(1920, 1080);
+  const canvas = createCanvas(Config.OUTPUT_WIDTH, Config.OUTPUT_HEIGHT);
   canvas.parent("sketch-container");
+  // style.css scales the canvas down/up to fit the window, keeping this aspect ratio
+  document.documentElement.style.setProperty("--output-aspect", Config.OUTPUT_WIDTH / Config.OUTPUT_HEIGHT);
+
+  // "VJ Player", or "VJ Player <n>" when started with --instance=<n>
+  window.electronAPI.getInstanceInfo().then((info) => {
+    if (!info) return;
+    document.title = info.title;
+    SyphonOut.serverName = info.syphonName;
+  });
+
   initializeMediaPlayer();
   initRemote();
 }
@@ -35,16 +46,7 @@ function draw() {
     renderMedia(current);
   }
 
-  if (App.showSettings) {
-    renderSettingsScreen();
-  }
-
   publishSyphon(true);
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-  invalidate();
 }
 
 // ============================================================================
@@ -57,8 +59,7 @@ async function initializeMediaPlayer() {
     log("Assets path:", App.assetsPath);
 
     if (!App.assetsPath) {
-      App.showSettings = true;
-      invalidate();
+      openSettings();
       return;
     }
 
@@ -73,8 +74,7 @@ async function selectAssetsFolder() {
   if (!newPath) return;
 
   App.assetsPath = newPath;
-  App.showSettings = false;
-  invalidate();
+  closeSettings();
   await startPlaylists();
 }
 
@@ -83,8 +83,8 @@ async function selectAssetsFolder() {
 // ============================================================================
 
 const KEY_ACTIONS = {
-  s: () => (App.showSettings ? selectAssetsFolder() : (App.showSettings = true)),
-  escape: () => (App.showSettings ? (App.showSettings = false) : window.electronAPI.quitApp()), // closes settings, otherwise quits
+  s: toggleSettings,
+  escape: () => (App.showSettings ? closeSettings() : window.electronAPI.quitApp()), // closes settings, otherwise quits
   n: () => switchPlaylist(1),
   x: () => switchPlaylist(-1),
   arrowright: advance, // skip to another random file within the playlist
@@ -98,17 +98,8 @@ const KEY_ACTIONS = {
 };
 
 function keyPressed() {
+  if (isTypingInSettings() && key !== "Escape") return; // typing in the settings panel
   const action = KEY_ACTIONS[key.toLowerCase()];
   if (action) action();
   invalidate();
-}
-
-function mousePressed() {
-  if (!App.showSettings) return;
-  invalidate();
-
-  const b = settingsButtonRect();
-  if (mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h) {
-    selectAssetsFolder();
-  }
 }

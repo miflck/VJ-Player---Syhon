@@ -12,7 +12,7 @@
     "dist:linux": "electron-builder --linux",
     "build:syphon": "node-gyp rebuild",
     "hub": "node src/server/cli.js",
-    "test": "node test/hub.test.js"
+    "test": "node test/hub.test.js && node test/cli.test.js"
   },
   "author": "",
   "license": "MIT",

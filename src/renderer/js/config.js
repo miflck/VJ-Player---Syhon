@@ -11,7 +11,9 @@ const Config = {
   VIDEO_SEGMENT_TIME: { min: 2, max: 15 }, // seconds
   VIDEO_VOLUME: 0.5,
   IMAGE_ZOOM_FACTOR: 1.05,
-  PIXEL_DENSITY: 1, // 1 = canvas is window size in pixels (cheaper, and the Syphon output size); 2 = retina sharpness on screen
+  OUTPUT_WIDTH: 1920, // the canvas is always this size, whatever the window size; it is also the Syphon size
+  OUTPUT_HEIGHT: 1080,
+  PIXEL_DENSITY: 1, // 1 = one canvas pixel per output pixel; 2 would double the Syphon readback size
   PRELOAD_RETRY_LIMIT: 5,
   PRELOAD_RETRY_DELAY: 250, // ms
 };
@@ -19,7 +21,6 @@ const Config = {
 // UI-level state that isn't tied to playlists or playback.
 const App = {
   assetsPath: "",
-  remoteUrls: [], // where the remote-control page can be opened (shown in settings)
   showSettings: false,
   isBlackedOut: false, // "A" toggles this — hides output without stopping playback
   isMasked: true, // "M" toggles this — circular mask (r = height/2), media contained within it

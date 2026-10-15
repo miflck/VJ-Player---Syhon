@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, powerSaveBlocker } = require("electron");
 const { startRemote } = require("./remote");
+const { applyCommandLine } = require("./cli");
 const path = require("path");
 const fs = require("fs").promises;
 const fsSync = require("fs");
@@ -9,9 +10,16 @@ app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 
+// Several copies can run side by side: `--instance=<name>` gives each its own
+// settings folder ("VJ Player <name>"), Syphon server name and window title.
+// Must be set before anything reads userData.
+const instance = (app.commandLine.getSwitchValue("instance") || "").replace(/[^\w.-]/g, "");
+if (instance) app.setPath("userData", `${app.getPath("userData")} ${instance}`);
+
 let mainWindow;
 let assetsPath = "";
 let userConfig = {}; // everything in config.json, so saving the assets path keeps other settings (e.g. "remote")
+let settings = {}; // userConfig plus command-line overrides; what the app actually uses (never saved)
 
 // Path to store user data
 const userDataPath = app.getPath("userData");
@@ -52,9 +60,9 @@ function loadConfig() {
 // Save configuration
 function saveConfig() {
   try {
-    const config = { ...userConfig, assetsPath: assetsPath };
-    fsSync.writeFileSync(configPath, JSON.stringify(config, null, 2));
-    console.log("Saved assets path:", assetsPath);
+    // userConfig is what is in the file; command-line overrides (settings) are never written
+    fsSync.writeFileSync(configPath, JSON.stringify(userConfig, null, 2));
+    console.log("Saved config");
   } catch (error) {
     console.error("Error saving config:", error);
   }
@@ -199,10 +207,24 @@ async function loadPlaylistsConfig(basePath) {
   return generateDefaultPlaylistsConfig(basePath);
 }
 
+// Names that depend on the instance. Syphon and window title can be overridden in
+// config.json: { "syphon": { "name": "..." } }
+function instanceInfo() {
+  const label = instance ? `VJ Player ${instance}` : "VJ Player";
+  return { instance, title: label, syphonName: (settings.syphon && settings.syphon.name) || label };
+}
+
 function createWindow() {
+  // The output is a fixed 1920x1080 canvas; the window shows it at half size by default
+  // (config.json: { "window": { "width": 960, "height": 540, "x": 0, "y": 0 } }, content size)
+  const win = settings.window || {};
   mainWindow = new BrowserWindow({
-    width: 1920,
-    height: 1080,
+    width: win.width || 960,
+    height: win.height || 540,
+    x: win.x,
+    y: win.y,
+    useContentSize: true,
+    title: instanceInfo().title,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -215,6 +237,7 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
+  mainWindow.on("page-title-updated", (event) => event.preventDefault()); // keep the instance title
 
   // Open DevTools in development
   if (!app.isPackaged) {
@@ -233,9 +256,24 @@ function createWindow() {
 
 app.whenReady().then(() => {
   loadConfig(); // Load saved path before creating window
+  const cli = applyCommandLine(userConfig, app.commandLine); // command-line options beat config.json
+  settings = cli.config;
+  if (cli.assets) {
+    assetsPath = cli.assets;
+    console.log("Assets folder from --assets:", assetsPath);
+  }
   powerSaveBlocker.start("prevent-display-sleep"); // keep the display on while the player runs
   createWindow();
-  startRemote({ getWindow: () => mainWindow, userConfig });
+  startRemote({
+    getWindow: () => mainWindow,
+    userConfig: settings,
+    instance,
+    // host/client chosen in the settings screen is remembered
+    saveRemote: (remote) => {
+      userConfig.remote = { ...userConfig.remote, ...remote };
+      saveConfig();
+    },
+  });
 });
 
 app.on("window-all-closed", () => {
@@ -262,6 +300,7 @@ ipcMain.handle("select-assets-folder", async () => {
 
   if (!result.canceled && result.filePaths.length > 0) {
     assetsPath = result.filePaths[0];
+    userConfig.assetsPath = assetsPath;
     saveConfig(); // Save immediately after selection
     return assetsPath;
   }
@@ -327,6 +366,8 @@ ipcMain.handle("open-playlists-config", async () => {
   }
   return true;
 });
+
+ipcMain.handle("get-instance-info", () => instanceInfo());
 
 ipcMain.handle("quit-app", () => {
   app.quit();

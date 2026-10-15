@@ -12,11 +12,6 @@ function initRemote() {
 
   window.electronAPI.onRemoteCommand(handleRemoteCommand);
   setInterval(publishRemoteState, 1000);
-
-  window.electronAPI.getRemoteInfo().then((info) => {
-    App.remoteUrls = (info && info.urls) || [];
-    invalidate();
-  });
 }
 
 function handleRemoteCommand(command) {

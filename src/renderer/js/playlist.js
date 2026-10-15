@@ -23,8 +23,7 @@ async function loadPlaylists() {
     console.warn("No playlists found. Check playlists.json in your assets folder.");
     Playlist.files = [];
     Playlist.name = "";
-    App.showSettings = true;
-    invalidate();
+    openSettings();
     return false;
   }
   return true;

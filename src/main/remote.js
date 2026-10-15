@@ -1,5 +1,6 @@
 // Remote control for the main process: optionally hosts the hub (src/server/hub.js)
-// and connects this player to a hub as a socket.io client.
+// and connects this player to a hub as a socket.io client. Host or client can also be
+// switched while the app runs (settings screen), see "set-remote-settings".
 //
 // Settings live in the "remote" object of config.json (in Electron's userData folder):
 //   {
@@ -26,62 +27,113 @@ function lanUrls(port) {
     .map((net) => `http://${net.address}:${port}`);
 }
 
-function startRemote({ getWindow, userConfig = {} }) {
-  const settings = { enabled: true, host: true, port: 3000, url: "", token: "", name: os.hostname(), ...(userConfig.remote || {}) };
-  const info = { enabled: settings.enabled, hosting: false, urls: [], connected: false, error: "" };
+// saveRemote(partial): called when the settings screen changes host/url, to store it in config.json
+function startRemote({ getWindow, userConfig = {}, instance = "", saveRemote = () => {} }) {
+  const defaultName = instance ? `${os.hostname()} ${instance}` : os.hostname();
+  const settings = { enabled: true, host: true, port: 3000, url: "", token: "", name: defaultName, ...(userConfig.remote || {}) };
 
-  ipcMain.handle("get-remote-info", () => info);
-  if (!settings.enabled) return info;
+  const state = { hosting: false, connected: false, urls: [], error: "" };
+  let hub = null;
+  let client = null;
+  let lastState = null; // latest state of this player, resent after a reconnect
+  let generation = 0; // bumped on every (re)start; late results of an old start are ignored
 
-  const hubUrl = settings.url || (settings.host ? `http://127.0.0.1:${settings.port}` : "");
+  const snapshot = () => ({
+    enabled: settings.enabled,
+    mode: settings.host ? "host" : "client",
+    url: settings.url,
+    port: settings.port,
+    name: settings.name,
+    ...state,
+  });
 
-  const connectClient = () => {
-    if (!hubUrl) return;
-    let lastState = null; // resent after a reconnect, so the hub never shows stale or empty state
-    const client = connect(hubUrl, { auth: { role: "player", name: settings.name, token: settings.token }, reconnection: true });
+  function connectClient(gen) {
+    const hubUrl = settings.url || (settings.host ? `http://127.0.0.1:${settings.port}` : "");
+    if (!hubUrl || gen !== generation) return;
 
-    client.on("connect", () => {
-      info.connected = true;
+    const socket = connect(hubUrl, { auth: { role: "player", name: settings.name, token: settings.token }, reconnection: true });
+    client = socket;
+
+    socket.on("connect", () => {
+      state.connected = true;
       console.log(`[remote] connected to ${hubUrl}`);
-      if (lastState) client.emit("state", lastState);
+      if (lastState) socket.emit("state", lastState);
     });
-    client.on("disconnect", () => (info.connected = false));
-    client.on("connect_error", (error) => {
-      info.connected = false;
+    socket.on("disconnect", () => (state.connected = false));
+    socket.on("connect_error", (error) => {
+      state.connected = false;
       console.warn(`[remote] cannot reach ${hubUrl}: ${error.message}`);
     });
 
     // hub → this player's page
-    client.on("command", (cmd) => {
+    socket.on("command", (cmd) => {
       const win = getWindow();
       if (win && !win.isDestroyed()) win.webContents.send("remote-command", cmd);
     });
-
-    // this player's page → hub
-    ipcMain.on("remote-state", (_event, state) => {
-      lastState = { ...state, name: settings.name };
-      if (client.connected) client.emit("state", lastState);
-    });
-  };
-
-  if (settings.host) {
-    startHub({ port: settings.port, token: settings.token, staticDir: path.join(__dirname, "..", "controller") })
-      .then(() => {
-        info.hosting = true;
-        info.urls = lanUrls(settings.port);
-        console.log(`[remote] controller page: ${info.urls.join("  ") || `http://localhost:${settings.port}`}`);
-        connectClient();
-      })
-      .catch((error) => {
-        info.error = error.message;
-        console.error(`[remote] could not start the hub on port ${settings.port}: ${error.message}`);
-        connectClient(); // still try the configured hub, if any
-      });
-  } else {
-    connectClient();
   }
 
-  return info;
+  async function start() {
+    if (!settings.enabled) return;
+    const gen = ++generation;
+
+    if (!settings.host) return connectClient(gen);
+
+    try {
+      hub = await startHub({ port: settings.port, token: settings.token, staticDir: path.join(__dirname, "..", "controller") });
+      if (gen !== generation) return; // stopped again while starting
+      state.hosting = true;
+      state.urls = lanUrls(settings.port);
+      console.log(`[remote] controller page: ${state.urls.join("  ") || `http://localhost:${settings.port}`}`);
+    } catch (error) {
+      state.error = error.message;
+      if (error.code === "EADDRINUSE" && !settings.url) {
+        // another copy of the player already hosts the hub: join it
+        console.log(`[remote] port ${settings.port} is taken (another instance?), joining the hub that is running there`);
+      } else {
+        console.error(`[remote] could not start the hub on port ${settings.port}: ${error.message}`);
+      }
+    }
+    connectClient(gen); // our own hub, or the configured one if hosting failed
+  }
+
+  async function stop() {
+    generation++;
+    if (client) client.close();
+    client = null;
+    if (hub) await hub.close();
+    hub = null;
+    Object.assign(state, { hosting: false, connected: false, urls: [], error: "" });
+  }
+
+  // this player's page → hub
+  ipcMain.on("remote-state", (_event, pageState) => {
+    lastState = { ...pageState, name: settings.name };
+    if (client && client.connected) client.emit("state", lastState);
+  });
+
+  ipcMain.handle("get-remote-info", () => snapshot());
+
+  // { mode: "host" } or { mode: "client", url: "http://192.168.1.20:3000" }
+  ipcMain.handle("set-remote-settings", async (_event, request) => {
+    if (!settings.enabled) return { ok: false, error: 'Remote control is turned off ("enabled": false in config.json).' };
+
+    const mode = request && request.mode;
+    const url = request && typeof request.url === "string" ? request.url.trim() : "";
+    if (mode !== "host" && mode !== "client") return { ok: false, error: "Choose host or client." };
+    if (mode === "client" && !/^https?:\/\/[^\s/]+/i.test(url)) {
+      return { ok: false, error: "Enter the hub address, e.g. http://192.168.1.20:3000" };
+    }
+
+    await stop();
+    settings.host = mode === "host";
+    settings.url = mode === "client" ? url.replace(/\/+$/, "") : "";
+    saveRemote({ host: settings.host, url: settings.url });
+    await start();
+    return { ok: true, info: snapshot() };
+  });
+
+  start();
+  return { snapshot };
 }
 
 module.exports = { startRemote };

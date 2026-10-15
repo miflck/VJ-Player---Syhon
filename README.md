@@ -33,8 +33,9 @@ output can also be sent to other apps (MadMapper, Resolume, …) over
    npm run build:syphon
    ```
 
-4. On first launch you'll see the settings screen. Click **Select Assets
-   Folder** (or press `S`) and pick the folder containing your media.
+4. On first launch you'll see the settings screen. Click **Choose folder…**
+   and pick the folder containing your media. (Press `S` to open the settings
+   screen again later.)
 
 That's it — the app will generate a starter `playlists.json` inside your
 assets folder automatically (see below), and start playing.
@@ -49,6 +50,7 @@ assets folder automatically (see below), and start playing.
 │   ├── main/
 │   │   ├── main.js           Electron main process: window, playlist scanning, IPC
 │   │   ├── remote.js         Remote control: hosts the hub, connects this player to it
+│   │   ├── cli.js            Command-line options (override config.json)
 │   │   └── preload.js        Exposes a safe electronAPI to the renderer (incl. Syphon)
 │   ├── server/
 │   │   ├── hub.js            socket.io hub: relays commands to players, state to controllers
@@ -63,13 +65,14 @@ assets folder automatically (see below), and start playing.
 │           ├── playlist.js   playlists.json handling, random picking
 │           ├── sketches.js   p5 sketch files as media
 │           ├── player.js     Media loading, playback, transitions
-│           ├── ui.js         Canvas rendering, settings screen
+│           ├── ui.js         Canvas rendering
+│           ├── settings.js   Settings panel (assets folder, host/client)
 │           ├── syphon.js     Syphon output (macOS, key "Y")
 │           ├── remote.js     Remote commands in, player state out
 │           └── sketch.js     p5 setup/draw, init, keyboard/mouse input
 ├── native/                   Syphon native addon source (syphon_addon.mm)
 ├── frameworks/               Syphon.framework
-├── test/                     Hub tests (npm test)
+├── test/                     Hub and command-line tests (npm test)
 ├── examples/                 Example playlists.json, config.json (remote control) and sketches
 └── README.md
 ```
@@ -254,12 +257,15 @@ again to stop. Syphon is off at launch.
 
 - The addon must be built once: `npm run build:syphon` (needs the Xcode
   command line tools).
-- The output size is the window size in pixels. `Config.PIXEL_DENSITY` in
-  `src/renderer/js/config.js` is `1` by default; set it to `2` for a sharper
-  picture on retina screens, at about 4× the readback cost.
+- The output is always **1920×1080**, whatever the size of the window. The
+  window shows it scaled to fit (black bars if the window isn't 16:9) and opens
+  at half size, 960×540. The size is `OUTPUT_WIDTH` / `OUTPUT_HEIGHT` in
+  `src/renderer/js/config.js`; sketches and the circle mask use the same size.
+  `PIXEL_DENSITY` there is `1`; `2` would double the Syphon readback size.
 - The canvas is only read back while a client is connected, so Syphon costs
   almost nothing when nobody is listening.
-- Clients list the server as "*app name* – VJ Player". When started with
+- The server is called "VJ Player" (or "VJ Player 2" for `--instance=2`, see
+  below). Clients list it as "*app name* – *server name*". When started with
   `npm start` the app name is "Electron Helper"; in a packaged build it comes
   from the product name ("VJ Player Helper (Renderer)").
 - Syphon cannot be sandboxed, so it does not work in a Mac App Store build.
@@ -268,7 +274,7 @@ again to stop. Syphon is off at launch.
 
 The app runs a small [socket.io](https://socket.io/) hub and serves a
 controller page. Open it from any phone, tablet or computer on the same
-network. The address is shown in the settings screen (`S`) and in the
+network. The address is shown in the settings screen (press `S`) and in the
 console, for example `http://192.168.2.8:3000`.
 
 The page has buttons for **Next media**, **Previous / Next playlist** (and
@@ -290,6 +296,14 @@ can act as a controller, e.g. from another app:
 const socket = io("http://192.168.2.8:3000", { auth: { role: "controller" } });
 socket.emit("command", { key: "arrowright" });
 ```
+
+**Host or client.** Press `S` and use the **Host / Client** buttons under
+*Remote control*. *Host* runs the hub and the controller page in this app;
+*Client* connects to a hub elsewhere, so you type its address (e.g.
+`http://192.168.1.20:3000`) and click **Apply**. It switches immediately, no
+restart, and the choice is saved in `config.json`. The panel shows whether the hub
+is running or the connection is up. (The same can be set with `--host` /
+`--hub=<url>`, or by hand in `config.json`, see below.)
 
 **Several players.** Every player connected to the hub receives every
 command. To run the hub on one machine and players on others, set the hub
@@ -340,11 +354,82 @@ and saves it next to the `remote` settings.
 reach it, and without a token anyone on the same network can control the
 player. Use a token on shared networks, or set `"enabled": false`.
 
+## Running several copies
+
+Start more than one copy with `--instance=<name>`, e.g. to feed two Syphon
+canvases to MadMapper. Each instance gets its own settings folder (macOS:
+`~/Library/Application Support/VJ Player <name>/config.json`, so its own assets
+folder and playlists), its own Syphon server ("VJ Player <name>"), its own window
+title and its own Dock icon.
+
+```bash
+npm start -- --instance=1
+npm start -- --instance=2
+
+# packaged app (a second launch needs -n)
+open -n -a "VJ Player" --args --instance=1
+open -n -a "VJ Player" --args --instance=2
+```
+
+Start instance 1 first. It hosts the remote-control hub; the others find the
+port taken and join that hub, so one controller page drives all instances at
+once (they appear with names like "my-mac 1", "my-mac 2"). Commands go to every
+instance; separate steering is not implemented. Set `"name"` in each instance's
+`remote` settings to change how it is listed.
+
+You can also set most things on the command line instead of editing files, see
+"Command-line options" below.
+
+Extra settings for `config.json` (all optional):
+
+```json
+{
+  "syphon": { "name": "Left screen" },
+  "window": { "width": 960, "height": 540, "x": 0, "y": 0 }
+}
+```
+
+`window` is the size of the visible content area; it only changes how large the
+output is shown, not the Syphon size.
+
+## Command-line options
+
+Options given when starting the app beat `config.json` for that launch. They are
+never written back to the file, so one app can be started in different roles from
+a script. The order of priority is: command line, then `config.json`, then the
+built-in defaults.
+
+| Option | Meaning |
+| --- | --- |
+| `--instance=<name>` | run as a separate instance with its own settings, Syphon name and window title |
+| `--hub=<url>` | connect to the hub at that address, and don't host one (client) |
+| `--host` | run the hub here (the default); `--hub` wins if both are given |
+| `--port=<n>` | hub port when hosting |
+| `--name=<text>` | how this player is listed in the controller |
+| `--syphon-name=<text>` | Syphon server name |
+| `--assets=<folder>` | assets folder for this launch (not saved) |
+| `--window=<W>x<H>` | visible window size, e.g. `960x540` |
+
+```bash
+# main machine: hosts the hub, plays, own Syphon name
+npm start -- --instance=1 --host --name="Left" --syphon-name="Left Out"
+
+# second player (same Mac or another one): joins the hub
+npm start -- --instance=2 --hub=http://192.168.1.20:3000 --name="Right" --syphon-name="Right Out"
+
+# packaged app; the options follow --args
+open -n -a "VJ Player" --args --instance=2 --hub=http://192.168.1.20:3000
+```
+
+Put the lines you use into a small shell script, one per setup. Values with spaces
+need quotes, e.g. `--name="Right screen"`. There is no token option; for a shared
+network set `"token"` in `config.json` (see Remote control).
+
 ## Keyboard controls
 
 | Key         | Action                                                  |
 | ----------- | ------------------------------------------------------- |
-| `S`         | Open settings / choose assets folder                    |
+| `S`         | Open / close the settings screen                        |
 | `Esc`       | Close settings; if none are open, quit the app          |
 | `N`         | Next playlist                                           |
 | `X`         | Previous playlist                                       |
