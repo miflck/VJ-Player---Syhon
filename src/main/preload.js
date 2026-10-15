@@ -56,6 +56,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getAssetsPath: () => ipcRenderer.invoke("get-assets-path"),
   selectAssetsFolder: () => ipcRenderer.invoke("select-assets-folder"),
   toggleFullscreen: () => ipcRenderer.invoke("toggle-fullscreen"),
+  quitApp: () => ipcRenderer.invoke("quit-app"),
+  // remote control (socket.io lives in the main process)
+  getRemoteInfo: () => ipcRenderer.invoke("get-remote-info"),
+  onRemoteCommand: (callback) => ipcRenderer.on("remote-command", (_event, command) => callback(command)),
+  sendRemoteState: (state) => ipcRenderer.send("remote-state", state),
   openPlaylistsConfig: () => ipcRenderer.invoke("open-playlists-config"),
   syphonStart: syphon.start,
   syphonStop: syphon.stop,

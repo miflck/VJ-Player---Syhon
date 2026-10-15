@@ -8,6 +8,7 @@
 //   sketches.js p5 sketch files as media
 //   ui.js       canvas rendering and settings screen
 //   syphon.js   Syphon output (macOS)
+//   remote.js   remote control over socket.io (commands in, state out)
 //   sketch.js   p5 setup/draw, initialisation and input
 
 function setup() {
@@ -15,6 +16,7 @@ function setup() {
   const canvas = createCanvas(1920, 1080);
   canvas.parent("sketch-container");
   initializeMediaPlayer();
+  initRemote();
 }
 
 function draw() {
@@ -82,7 +84,7 @@ async function selectAssetsFolder() {
 
 const KEY_ACTIONS = {
   s: () => (App.showSettings ? selectAssetsFolder() : (App.showSettings = true)),
-  escape: () => (App.showSettings = false),
+  escape: () => (App.showSettings ? (App.showSettings = false) : window.electronAPI.quitApp()), // closes settings, otherwise quits
   n: () => switchPlaylist(1),
   x: () => switchPlaylist(-1),
   arrowright: advance, // skip to another random file within the playlist

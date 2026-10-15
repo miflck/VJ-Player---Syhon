@@ -68,6 +68,13 @@ function switchPlaylist(direction) {
   restartPlayback();
 }
 
+// Jumps straight to the playlist with the given index.
+function gotoPlaylist(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= Playlist.order.length) return;
+  activatePlaylist(index);
+  restartPlayback();
+}
+
 // Picks one file at random, biased by each file's @w weight flag.
 function pickRandomFile() {
   if (Playlist.files.length <= 1) return Playlist.files[0] || null;

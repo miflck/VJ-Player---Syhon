@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1014">
+  <title>VJ Remote</title>
+  <style>
+    /* Made for a dark room and a thumb: big targets, high contrast, one accent. */
+    :root {
+      --bg: #0d1014; --panel: #161b22; --line: #2a323d; --fg: #e8ecf1; --muted: #8b97a5;
+      --accent: #ff5a36; --ok: #3ddc97;
+      --gap: 12px;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--fg);
+      font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      -webkit-tap-highlight-color: transparent;
+    }
+    main { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+    header { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); }
+    h1 { font-size: 20px; margin: 0; letter-spacing: 0.02em; }
+    .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+    .dot.on { background: var(--ok); }
+    .dot.warn { background: var(--accent); }
+
+    h2 { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+    section { min-width: 0; }
+    .row { display: grid; gap: var(--gap); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    button {
+      font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      min-height: 64px; padding: 10px 14px; cursor: pointer; touch-action: manipulation;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      transition: transform 80ms ease, background 120ms ease, border-color 120ms ease;
+    }
+    button:active, button.sent { transform: scale(0.97); background: #1f2630; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    button[disabled] { opacity: 0.4; cursor: default; }
+    button small { color: var(--muted); font-size: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    button.primary { grid-column: 1 / -1; min-height: 96px; font-size: 24px; font-weight: 600; background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.primary small { color: rgba(255,255,255,0.75); }
+    button.primary:active, button.primary.sent { background: #e84a28; }
+    button.toggle.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    button.toggle.active small::after { content: " · on"; color: var(--accent); }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chips button { min-height: 44px; padding: 6px 14px; border-radius: 999px; font-size: 14px; flex-direction: row; }
+    .chips button.current { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+    .players { display: flex; flex-direction: column; gap: 8px; }
+    .player { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; min-width: 0; }
+    .player b { font-weight: 600; }
+    .player .file { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+    .empty { color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>VJ Remote</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="status">connecting…</span></div>
+  </header>
+
+  <section>
+    <h2>Media</h2>
+    <div class="row">
+      <button class="primary" data-key="arrowright" disabled>Next media <small>→ another file in this playlist</small></button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Playlist</h2>
+    <div class="row">
+      <button data-key="x" disabled>◀ Previous <small>X</small></button>
+      <button data-key="n" disabled>Next ▶ <small>N</small></button>
+    </div>
+    <div class="chips" id="chips" style="margin-top: var(--gap)"></div>
+  </section>
+
+  <section>
+    <h2>Output</h2>
+    <div class="row three">
+      <button class="toggle" id="t-blackout" data-key="a" disabled>Blackout <small>A</small></button>
+      <button class="toggle" id="t-mask" data-key="m" disabled>Circle <small>M</small></button>
+      <button class="toggle" id="t-syphon" data-key="y" disabled>Syphon <small>Y</small></button>
+      <button data-key="f" disabled>Fullscreen <small>F</small></button>
+      <button data-key="l" disabled>Reload <small>L</small></button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Now playing</h2>
+    <div class="players" id="players"><div class="empty">No player connected.</div></div>
+  </section>
+</main>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  // ?token=... in the address is sent to the hub when it requires one
+  const token = new URLSearchParams(location.search).get("token") || "";
+  const socket = io({ auth: { role: "controller", token } });
+
+  const $ = (id) => document.getElementById(id);
+  const buttons = [...document.querySelectorAll("button[data-key]")];
+  let players = [];
+  let connected = false;
+
+  function send(command, button) {
+    socket.emit("command", command, (reply) => {
+      if (reply && !reply.ok) setStatus("warn", reply.error || "rejected");
+    });
+    if (button) { button.classList.add("sent"); setTimeout(() => button.classList.remove("sent"), 120); }
+    if (navigator.vibrate) navigator.vibrate(10);
+  }
+
+  function setStatus(kind, text) {
+    $("dot").className = "dot " + kind;
+    $("status").textContent = text;
+  }
+
+  function render() {
+    const ready = connected && players.length > 0;
+    buttons.forEach((b) => (b.disabled = !ready));
+    setStatus(!connected ? "" : ready ? "on" : "warn",
+      !connected ? "connecting…" : ready ? `${players.length} player${players.length > 1 ? "s" : ""}` : "no player");
+
+    const lead = players[0] || {};
+    $("t-blackout").classList.toggle("active", !!lead.blackout);
+    $("t-mask").classList.toggle("active", !!lead.mask);
+    $("t-syphon").classList.toggle("active", !!lead.syphon);
+
+    const chips = $("chips");
+    chips.replaceChildren(...(lead.playlists || []).map((name, index) => {
+      const chip = document.createElement("button");
+      chip.textContent = name;
+      chip.disabled = !ready;
+      chip.classList.toggle("current", index === lead.playlist);
+      chip.addEventListener("click", () => send({ playlist: index }, chip));
+      return chip;
+    }));
+
+    const list = $("players");
+    if (!players.length) { list.innerHTML = '<div class="empty">No player connected.</div>'; return; }
+    list.replaceChildren(...players.map((p) => {
+      const card = document.createElement("div");
+      card.className = "player";
+      const name = document.createElement("b");
+      name.textContent = p.name || "Player";
+      const where = document.createElement("span");
+      where.textContent = p.playlists ? ` · ${p.playlists[p.playlist] ?? ""}` : "";
+      const file = document.createElement("div");
+      file.className = "file";
+      file.textContent = p.file ? `${p.kind}: ${p.file}` : "nothing playing";
+      card.append(name, where, file);
+      return card;
+    }));
+  }
+
+  buttons.forEach((b) => b.addEventListener("click", () => send({ key: b.dataset.key }, b)));
+
+  // the same keys work on a keyboard
+  addEventListener("keydown", (e) => {
+    if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+    const key = e.key.toLowerCase();
+    const button = buttons.find((b) => b.dataset.key === key);
+    if (button && !button.disabled) { e.preventDefault(); send({ key }, button); }
+  });
+
+  socket.on("connect", () => { connected = true; render(); });
+  socket.on("disconnect", () => { connected = false; players = []; render(); });
+  socket.on("connect_error", (e) => { connected = false; setStatus("warn", e.message === "unauthorized" ? "wrong token" : "connecting…"); });
+  socket.on("players", (list) => { players = list; render(); });
+  render();
+</script>
+</body>
+</html>

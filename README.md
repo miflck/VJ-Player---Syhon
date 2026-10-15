@@ -48,7 +48,13 @@ assets folder automatically (see below), and start playing.
 ├── src/
 │   ├── main/
 │   │   ├── main.js           Electron main process: window, playlist scanning, IPC
+│   │   ├── remote.js         Remote control: hosts the hub, connects this player to it
 │   │   └── preload.js        Exposes a safe electronAPI to the renderer (incl. Syphon)
+│   ├── server/
+│   │   ├── hub.js            socket.io hub: relays commands to players, state to controllers
+│   │   └── cli.js            Standalone hub (npm run hub)
+│   ├── controller/
+│   │   └── index.html        Remote control web page (served by the hub)
 │   └── renderer/
 │       ├── index.html        Host page, loads p5.js + the scripts below
 │       ├── style.css         Fullscreen canvas styling
@@ -59,9 +65,11 @@ assets folder automatically (see below), and start playing.
 │           ├── player.js     Media loading, playback, transitions
 │           ├── ui.js         Canvas rendering, settings screen
 │           ├── syphon.js     Syphon output (macOS, key "Y")
+│           ├── remote.js     Remote commands in, player state out
 │           └── sketch.js     p5 setup/draw, init, keyboard/mouse input
 ├── native/                   Syphon native addon source (syphon_addon.mm)
 ├── frameworks/               Syphon.framework
+├── test/                     Hub tests (npm test)
 ├── examples/                 Example playlists.json and sketches
 └── README.md
 ```
@@ -256,12 +264,75 @@ again to stop. Syphon is off at launch.
   from the product name ("VJ Player Helper (Renderer)").
 - Syphon cannot be sandboxed, so it does not work in a Mac App Store build.
 
+## Remote control
+
+The app runs a small [socket.io](https://socket.io/) hub and serves a
+controller page. Open it from any phone, tablet or computer on the same
+network. The address is shown in the settings screen (`S`) and in the
+console, for example `http://192.168.2.8:3000`.
+
+The page has buttons for **Next media**, **Previous / Next playlist** (and
+each playlist by name), **Blackout**, **Circle mask**, **Syphon**,
+**Fullscreen** and **Reload**. Its keyboard shortcuts are the same as in the
+player. It also shows what each connected player is playing.
+
+```
+controller ──command──▶ hub ──command──▶ every player
+controller ◀──players── hub ◀───state─── every player
+```
+
+A command is `{ "key": "n" }` (same as pressing that key) or
+`{ "playlist": 2 }` (jump to that playlist). Allowed keys: `n x → a m l f y`.
+`E`, `S`, `Esc` and `Backspace` can't be sent remotely. Any socket.io client
+can act as a controller, e.g. from another app:
+
+```js
+const socket = io("http://192.168.2.8:3000", { auth: { role: "controller" } });
+socket.emit("command", { key: "arrowright" });
+```
+
+**Several players.** Every player connected to the hub receives every
+command. To run the hub on one machine and players on others, set the hub
+address on the other machines (see below), or run a hub without a player
+window with `npm run hub` (`--port 3000 --token secret`).
+
+**Settings** go in the `remote` object of `config.json` in the app's userData
+folder (macOS: `~/Library/Application Support/VJ Player/config.json`). All
+keys are optional:
+
+```json
+{
+  "assetsPath": "...",
+  "remote": {
+    "enabled": true,
+    "host": true,
+    "port": 3000,
+    "url": "",
+    "token": "",
+    "name": "Stage left"
+  }
+}
+```
+
+- `enabled`: `false` turns remote control off completely.
+- `host`: run the hub in this app. Set `false` on players that only connect to
+  another machine's hub.
+- `url`: the hub to connect to, e.g. `"http://192.168.2.8:3000"`. Empty means
+  this app's own hub.
+- `token`: a shared secret. When set, controllers and players must send it; open
+  the page as `http://…:3000/?token=secret`.
+- `name`: how this player is listed in the controller (default: the computer's name).
+
+**Security.** The hub listens on all network interfaces so other devices can
+reach it, and without a token anyone on the same network can control the
+player. Use a token on shared networks, or set `"enabled": false`.
+
 ## Keyboard controls
 
 | Key         | Action                                                  |
 | ----------- | ------------------------------------------------------- |
 | `S`         | Open settings / choose assets folder                    |
-| `Esc`       | Close settings                                          |
+| `Esc`       | Close settings; if none are open, quit the app          |
 | `N`         | Next playlist                                           |
 | `X`         | Previous playlist                                       |
 | `→` (Right) | Skip to another random file in this playlist            |

@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, powerSaveBlocker } = require("electron");
+const { startRemote } = require("./remote");
 const path = require("path");
 const fs = require("fs").promises;
 const fsSync = require("fs");
@@ -10,6 +11,7 @@ app.commandLine.appendSwitch("disable-background-timer-throttling");
 
 let mainWindow;
 let assetsPath = "";
+let userConfig = {}; // everything in config.json, so saving the assets path keeps other settings (e.g. "remote")
 
 // Path to store user data
 const userDataPath = app.getPath("userData");
@@ -38,6 +40,7 @@ function loadConfig() {
     if (fsSync.existsSync(configPath)) {
       const data = fsSync.readFileSync(configPath, "utf8");
       const config = JSON.parse(data);
+      userConfig = config;
       assetsPath = config.assetsPath || "";
       console.log("Loaded assets path:", assetsPath);
     }
@@ -49,9 +52,7 @@ function loadConfig() {
 // Save configuration
 function saveConfig() {
   try {
-    const config = {
-      assetsPath: assetsPath,
-    };
+    const config = { ...userConfig, assetsPath: assetsPath };
     fsSync.writeFileSync(configPath, JSON.stringify(config, null, 2));
     console.log("Saved assets path:", assetsPath);
   } catch (error) {
@@ -234,6 +235,7 @@ app.whenReady().then(() => {
   loadConfig(); // Load saved path before creating window
   powerSaveBlocker.start("prevent-display-sleep"); // keep the display on while the player runs
   createWindow();
+  startRemote({ getWindow: () => mainWindow, userConfig });
 });
 
 app.on("window-all-closed", () => {
@@ -324,6 +326,10 @@ ipcMain.handle("open-playlists-config", async () => {
     return false;
   }
   return true;
+});
+
+ipcMain.handle("quit-app", () => {
+  app.quit();
 });
 
 ipcMain.handle("toggle-fullscreen", async () => {

@@ -10,7 +10,9 @@
     "dist:mac": "electron-builder --mac",
     "dist:win": "electron-builder --win",
     "dist:linux": "electron-builder --linux",
-    "build:syphon": "node-gyp rebuild"
+    "build:syphon": "node-gyp rebuild",
+    "hub": "node src/server/cli.js",
+    "test": "node test/hub.test.js"
   },
   "author": "",
   "license": "MIT",
@@ -18,11 +20,13 @@
   "devDependencies": {
     "electron": "^41.7.1",
     "electron-builder": "^26.15.3",
-    "node-gyp": "^11.5.0",
-    "node-addon-api": "^3.2.1"
+    "node-addon-api": "^3.2.1",
+    "node-gyp": "^11.5.0"
   },
   "dependencies": {
-    "p5": "^1.9.4"
+    "p5": "^1.9.4",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4"
   },
   "build": {
     "appId": "com.example.vjplayer",

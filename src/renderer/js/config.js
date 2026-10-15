@@ -19,6 +19,7 @@ const Config = {
 // UI-level state that isn't tied to playlists or playback.
 const App = {
   assetsPath: "",
+  remoteUrls: [], // where the remote-control page can be opened (shown in settings)
   showSettings: false,
   isBlackedOut: false, // "A" toggles this — hides output without stopping playback
   isMasked: true, // "M" toggles this — circular mask (r = height/2), media contained within it

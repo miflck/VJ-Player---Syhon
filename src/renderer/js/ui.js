@@ -92,5 +92,10 @@ function renderSettingsScreen() {
   text("Playlists are defined in playlists.json inside that folder", width / 2, height / 2 + 145);
   text("'N' / 'X' next/previous playlist · 'L' reload · 'E' edit playlists.json", width / 2, height / 2 + 170);
   text("'A' blackout · 'M' circle mask · 'F' fullscreen · 'Y' Syphon · → skip", width / 2, height / 2 + 195);
-  text("Press 'ESC' to close settings", width / 2, height / 2 + 220);
+  text("Press 'ESC' to close settings (ESC again quits the app)", width / 2, height / 2 + 220);
+
+  if (App.remoteUrls.length) {
+    fill(150);
+    text(`Remote control: ${App.remoteUrls.join("   ")}`, width / 2, height / 2 + 250);
+  }
 }
