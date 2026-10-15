@@ -4,6 +4,7 @@ const { applyCommandLine } = require("./cli");
 const path = require("path");
 const fs = require("fs").promises;
 const fsSync = require("fs");
+const { spawn } = require("child_process");
 
 // Keep rendering (and publishing to Syphon) when the window is hidden or covered.
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
@@ -33,6 +34,14 @@ const MEDIA_EXTENSIONS = [".mp4", ".mov", ".jpg", ".jpeg", ".png", ".gif", ".web
 function isSketchFile(filename) {
   const lower = path.basename(filename).toLowerCase();
   return lower === "sketch.js" || lower.endsWith(".sketch.js");
+}
+
+// Word lists are "words.txt" or "<name>.words.txt": one word or phrase per line
+// (empty lines and lines starting with # are ignored). They are not media; they
+// are shown as a text layer over the media of the playlist they belong to.
+function isWordsFile(filename) {
+  const lower = path.basename(filename).toLowerCase();
+  return lower === "words.txt" || lower.endsWith(".words.txt");
 }
 
 function isMediaFile(filename) {
@@ -131,6 +140,41 @@ async function scanFolderForMedia(basePath, relativeFolder, sketchesOnly = false
   return results;
 }
 
+// Recursively collect word list files under basePath/relativeFolder (relative paths, forward slashes).
+async function scanFolderForWordFiles(basePath, relativeFolder) {
+  let entries;
+  try {
+    entries = await fs.readdir(path.join(basePath, relativeFolder), { withFileTypes: true });
+  } catch (error) {
+    return []; // scanFolderForMedia already reports unreadable folders
+  }
+
+  let results = [];
+  for (const entry of entries) {
+    const relative = path.join(relativeFolder, entry.name);
+    if (entry.isDirectory()) results = results.concat(await scanFolderForWordFiles(basePath, relative));
+    else if (entry.isFile() && isWordsFile(entry.name)) results.push(relative.split(path.sep).join("/"));
+  }
+  return results;
+}
+
+// Reads the given word list files and returns all words/phrases, one per line.
+async function readWords(basePath, relativeFiles) {
+  const words = [];
+  for (const relPath of relativeFiles) {
+    try {
+      const raw = await fs.readFile(path.join(basePath, relPath), "utf8");
+      for (const line of raw.split(/\r?\n/)) {
+        const word = line.trim();
+        if (word && !word.startsWith("#")) words.push(word);
+      }
+    } catch (error) {
+      console.warn(`Could not read word list "${relPath}":`, error.message);
+    }
+  }
+  return words;
+}
+
 // Validates an explicit list of file paths (relative to basePath), dropping
 // any that don't exist or aren't a supported media type.
 async function resolveExplicitFiles(basePath, relativeFiles) {
@@ -141,7 +185,7 @@ async function resolveExplicitFiles(basePath, relativeFiles) {
 
     const normalized = relPath.split(path.sep).join("/");
 
-    if (!isMediaFile(normalized)) {
+    if (!isMediaFile(normalized) && !isWordsFile(normalized)) {
       console.warn(`Skipping "${normalized}" — not a supported media type`);
       continue;
     }
@@ -207,20 +251,34 @@ async function loadPlaylistsConfig(basePath) {
   return generateDefaultPlaylistsConfig(basePath);
 }
 
+// Output (canvas / Syphon) size: config.json { "output": { "width": 1920, "height": 1080 } } or --output=WxH.
+const DEFAULT_OUTPUT = { width: 1920, height: 1080 };
+function outputSize() {
+  const out = settings.output || {};
+  const valid = (n) => Number.isInteger(n) && n >= 64 && n <= 8192;
+  if (out.width === undefined && out.height === undefined) return { ...DEFAULT_OUTPUT };
+  if (!valid(out.width) || !valid(out.height)) {
+    console.warn(`Ignoring output size ${out.width}x${out.height} (whole numbers from 64 to 8192); using ${DEFAULT_OUTPUT.width}x${DEFAULT_OUTPUT.height}`);
+    return { ...DEFAULT_OUTPUT };
+  }
+  return { width: out.width, height: out.height };
+}
+
 // Names that depend on the instance. Syphon and window title can be overridden in
 // config.json: { "syphon": { "name": "..." } }
 function instanceInfo() {
   const label = instance ? `VJ Player ${instance}` : "VJ Player";
-  return { instance, title: label, syphonName: (settings.syphon && settings.syphon.name) || label };
+  return { instance, title: label, syphonName: (settings.syphon && settings.syphon.name) || label, output: outputSize() };
 }
 
 function createWindow() {
-  // The output is a fixed 1920x1080 canvas; the window shows it at half size by default
+  // The output is a fixed-size canvas; the window shows it at half size by default
   // (config.json: { "window": { "width": 960, "height": 540, "x": 0, "y": 0 } }, content size)
   const win = settings.window || {};
+  const output = outputSize();
   mainWindow = new BrowserWindow({
-    width: win.width || 960,
-    height: win.height || 540,
+    width: win.width || Math.round(output.width / 2),
+    height: win.height || Math.round(output.height / 2),
     x: win.x,
     y: win.y,
     useContentSize: true,
@@ -262,6 +320,7 @@ app.whenReady().then(() => {
     assetsPath = cli.assets;
     console.log("Assets folder from --assets:", assetsPath);
   }
+  registerInstance();
   powerSaveBlocker.start("prevent-display-sleep"); // keep the display on while the player runs
   createWindow();
   startRemote({
@@ -308,7 +367,7 @@ ipcMain.handle("select-assets-folder", async () => {
   return null;
 });
 
-// Returns { playlists: { [name]: { files: string[], full: boolean } }, order: string[], configPath: string }
+// Returns { playlists: { [name]: { files: string[], full: boolean, words: string[] } }, order: string[], configPath: string }
 ipcMain.handle("get-media-files", async () => {
   if (!assetsPath) return { playlists: {}, order: [], configPath: "" };
 
@@ -324,17 +383,22 @@ ipcMain.handle("get-media-files", async () => {
       }
 
       let files = [];
+      let wordFiles = [];
 
       if (entry.folder) {
         files = files.concat(await scanFolderForMedia(assetsPath, entry.folder));
+        wordFiles = wordFiles.concat(await scanFolderForWordFiles(assetsPath, entry.folder));
       }
 
       if (Array.isArray(entry.files)) {
-        files = files.concat(await resolveExplicitFiles(assetsPath, entry.files));
+        const explicit = await resolveExplicitFiles(assetsPath, entry.files);
+        files = files.concat(explicit.filter((f) => !isWordsFile(f)));
+        wordFiles = wordFiles.concat(explicit.filter(isWordsFile));
       }
 
       if (files.length > 0) {
-        playlists[entry.name] = { files, full: entry.full === true };
+        const words = await readWords(assetsPath, [...new Set(wordFiles)]);
+        playlists[entry.name] = { files, full: entry.full === true, words };
         order.push(entry.name);
       } else {
         console.warn(`Playlist "${entry.name}" has no valid media files — skipping`);
@@ -368,6 +432,64 @@ ipcMain.handle("open-playlists-config", async () => {
 });
 
 ipcMain.handle("get-instance-info", () => instanceInfo());
+
+// ----------------------------------------------------------------------------
+// Launching more copies from the settings screen. Each running copy leaves a
+// "<name>.pid" file in a shared folder, so the next free instance number can be found.
+// ----------------------------------------------------------------------------
+const instancesDir = path.join(app.getPath("appData"), "VJ Player instances");
+const pidFile = (name) => path.join(instancesDir, `${name || "default"}.pid`);
+
+function isRunning(name) {
+  try {
+    process.kill(Number(fsSync.readFileSync(pidFile(name), "utf8")), 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM"; // exists but not ours: still running
+  }
+}
+
+function registerInstance() {
+  try {
+    fsSync.mkdirSync(instancesDir, { recursive: true });
+    fsSync.writeFileSync(pidFile(instance), String(process.pid));
+  } catch (error) {
+    console.error("Could not register instance:", error);
+  }
+}
+app.on("will-quit", () => {
+  try {
+    fsSync.unlinkSync(pidFile(instance));
+  } catch (error) {
+    /* already gone */
+  }
+});
+
+ipcMain.handle("launch-instance", () => {
+  let n = 2;
+  while (isRunning(String(n))) n++;
+  const name = String(n);
+  // unpackaged (npm start) electron needs the app folder as first argument
+  const args = app.isPackaged ? [`--instance=${name}`] : [app.getAppPath(), `--instance=${name}`];
+  try {
+    const child = spawn(process.execPath, args, { detached: true, stdio: "ignore" });
+    child.on("error", (error) => console.error("Could not launch instance:", error));
+    child.unref();
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, name: `VJ Player ${name}` };
+});
+
+// Output size chosen in the settings screen: saved to config.json, used from the next start
+ipcMain.handle("set-output-size", (_event, { width, height }) => {
+  const valid = (n) => Number.isInteger(n) && n >= 64 && n <= 8192;
+  if (!valid(width) || !valid(height)) return { ok: false, error: "Width and height must be whole numbers from 64 to 8192." };
+  userConfig.output = { width, height };
+  saveConfig();
+  return { ok: true };
+});
+ipcMain.on("get-instance-info-sync", (event) => (event.returnValue = instanceInfo())); // the page needs the output size before it starts
 
 ipcMain.handle("quit-app", () => {
   app.quit();

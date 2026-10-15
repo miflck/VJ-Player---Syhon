@@ -21,6 +21,25 @@
       </section>
 
       <section>
+        <h2>Output size</h2>
+        <label>Width × Height
+          <span class="size-row">
+            <input id="output-width" type="number" min="64" max="8192" step="1"> ×
+            <input id="output-height" type="number" min="64" max="8192" step="1">
+          </span>
+        </label>
+        <button id="output-apply" type="button" class="primary">Save</button>
+        <p id="output-status" class="status"></p>
+      </section>
+
+      <section>
+        <h2>More instances</h2>
+        <p class="hint">Starts another copy with its own settings, window and Syphon name (VJ Player 2, 3, …).</p>
+        <button id="launch-instance" type="button">Launch another instance</button>
+        <p id="launch-status" class="status"></p>
+      </section>
+
+      <section>
         <h2>Remote control</h2>
         <div class="segmented" role="group" aria-label="Role">
           <button id="mode-host" type="button">Host</button>
@@ -45,6 +64,7 @@
   <script src="js/playlist.js"></script>
   <script src="js/sketches.js"></script>
   <script src="js/player.js"></script>
+  <script src="js/words.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/syphon.js"></script>
   <script src="js/remote.js"></script>

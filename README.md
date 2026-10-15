@@ -65,6 +65,7 @@ assets folder automatically (see below), and start playing.
 │           ├── playlist.js   playlists.json handling, random picking
 │           ├── sketches.js   p5 sketch files as media
 │           ├── player.js     Media loading, playback, transitions
+│           ├── words.js      Word list text layer
 │           ├── ui.js         Canvas rendering
 │           ├── settings.js   Settings panel (assets folder, host/client)
 │           ├── syphon.js     Syphon output (macOS, key "Y")
@@ -183,6 +184,27 @@ This can be combined with the other flags, e.g. `clip@contain@w5.mp4` fits
 the whole clip on screen _and_ makes it 5× as likely to be picked. To show a
 logo indefinitely, put `logo@contain.png` in a playlist with `"full": true`.
 
+### Word lists
+
+Put a text file named `words.txt` (or `anything.words.txt`) into a playlist's
+folder and its words are shown as a text layer over that playlist's media:
+
+```
+# lines starting with # and empty lines are ignored
+Hello
+Welcome to the Infotage
+```
+
+- One word or phrase per line. Words appear one at a time in the centre of the screen,
+  fade in, stay for a few seconds, fade out, pause, and repeat in random order.
+- The words run on their own timeline, independent of the clips underneath.
+- Switching playlists removes the text immediately; the new playlist shows its
+  own words (or none, if it has no word list).
+- The text is part of the output (Syphon, blackout), but is not cut off by the
+  circle mask. Timing and size are in `Config` (`WORD_*`) in `config.js`.
+- Word lists also work in an explicit `files` list. A playlist still needs at
+  least one media file.
+
 ### Sketches
 
 A folder named after the sketch that contains a `sketch.js` is run as a p5
@@ -257,11 +279,11 @@ again to stop. Syphon is off at launch.
 
 - The addon must be built once: `npm run build:syphon` (needs the Xcode
   command line tools).
-- The output is always **1920×1080**, whatever the size of the window. The
-  window shows it scaled to fit (black bars if the window isn't 16:9) and opens
-  at half size, 960×540. The size is `OUTPUT_WIDTH` / `OUTPUT_HEIGHT` in
-  `src/renderer/js/config.js`; sketches and the circle mask use the same size.
-  `PIXEL_DENSITY` there is `1`; `2` would double the Syphon readback size.
+- The output is **1920×1080** by default, whatever the size of the window. The
+  window shows it scaled to fit (black bars if the window isn't the same shape) and
+  opens at half the output size, 960×540. Change the output size with `"output"` in
+  `config.json` or `--output=<W>x<H>`, see "Output size" below. `PIXEL_DENSITY` in
+  `src/renderer/js/config.js` is `1`; `2` would double the Syphon readback size.
 - The canvas is only read back while a client is connected, so Syphon costs
   almost nothing when nobody is listening.
 - The server is called "VJ Player" (or "VJ Player 2" for `--instance=2`, see
@@ -385,12 +407,31 @@ Extra settings for `config.json` (all optional):
 ```json
 {
   "syphon": { "name": "Left screen" },
-  "window": { "width": 960, "height": 540, "x": 0, "y": 0 }
+  "output": { "width": 960, "height": 1080 },
+  "window": { "width": 480, "height": 540, "x": 0, "y": 0 }
 }
 ```
 
 `window` is the size of the visible content area; it only changes how large the
 output is shown, not the Syphon size.
+
+### Output size
+
+`output` is the size of the canvas, which is also what Syphon sends and what
+sketches get. The default is 1920×1080. To fit two players side by side on one
+Full HD screen, give each instance half the width:
+
+```bash
+npm start -- --instance=1 --output=960x1080
+npm start -- --instance=2 --output=960x1080
+```
+
+or put `"output": { "width": 960, "height": 1080 }` in each instance's
+`config.json`. Whole numbers from 64 to 8192; anything else is ignored with a
+warning and 1920×1080 is used. Further copies can be started from the settings screen (**S**, "Launch another instance"): each gets the next free `--instance` number (2, 3, …). The size can also be set in the settings screen (**S**, "Output size"); it is saved to `config.json` and used after a restart. The window opens at half the output size unless
+you set `window`. The size is read at startup, so changing it needs a restart of
+that instance. The circle mask (`M`) is as wide as the smaller side of the
+canvas, so it also fits portrait outputs.
 
 ## Command-line options
 
@@ -409,6 +450,7 @@ built-in defaults.
 | `--syphon-name=<text>` | Syphon server name |
 | `--assets=<folder>` | assets folder for this launch (not saved) |
 | `--window=<W>x<H>` | visible window size, e.g. `960x540` |
+| `--output=<W>x<H>` | output (canvas / Syphon) size, default `1920x1080`, e.g. `960x1080` |
 
 ```bash
 # main machine: hosts the hub, plays, own Syphon name

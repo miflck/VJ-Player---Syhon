@@ -5,9 +5,10 @@ function renderMedia(slot) {
   const mediaWidth = (slot.kind === "video" ? media.elt.videoWidth : media.width) || width;
   const mediaHeight = (slot.kind === "video" ? media.elt.videoHeight : media.height) || height;
 
-  // Masked: media is sized against the circle's bounding square (side = height).
+  // Masked: media is sized against the circle's bounding square (side = the smaller canvas side).
+  const diameter = Math.min(width, height);
   const bounds = App.isMasked
-    ? { left: (width - height) / 2, top: 0, width: height, height }
+    ? { left: (width - diameter) / 2, top: (height - diameter) / 2, width: diameter, height: diameter }
     : { left: 0, top: 0, width, height };
 
   const fit = getFlags(slot.filename).fit;
@@ -20,7 +21,7 @@ function renderMedia(slot) {
 
   drawingContext.save();
   drawingContext.beginPath();
-  drawingContext.arc(width / 2, height / 2, height / 2, 0, TWO_PI);
+  drawingContext.arc(width / 2, height / 2, diameter / 2, 0, TWO_PI);
   drawingContext.clip();
   drawMedia(slot, draw);
   drawingContext.restore();

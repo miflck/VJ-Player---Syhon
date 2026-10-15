@@ -11,9 +11,16 @@ const Config = {
   VIDEO_SEGMENT_TIME: { min: 2, max: 15 }, // seconds
   VIDEO_VOLUME: 0.5,
   IMAGE_ZOOM_FACTOR: 1.05,
-  OUTPUT_WIDTH: 1920, // the canvas is always this size, whatever the window size; it is also the Syphon size
-  OUTPUT_HEIGHT: 1080,
+  // The canvas is always this size, whatever the window size; it is also the Syphon size.
+  // Set in config.json ("output") or with --output=WxH; default 1920x1080.
+  OUTPUT_WIDTH: (window.electronAPI.instance.output || {}).width || 1920,
+  OUTPUT_HEIGHT: (window.electronAPI.instance.output || {}).height || 1080,
   PIXEL_DENSITY: 1, // 1 = one canvas pixel per output pixel; 2 would double the Syphon readback size
+  // Word layer (see words.js); all times in seconds
+  WORD_FADE: 0.25, // fade in and fade out
+  WORD_HOLD: { min: 1.5, max: 3 }, // fully visible
+  WORD_GAP: { min: 8, max: 20 }, // pause between two words
+  WORD_SIZE: 0.1, // font size as a fraction of the output height
   PRELOAD_RETRY_LIMIT: 5,
   PRELOAD_RETRY_DELAY: 250, // ms
 };

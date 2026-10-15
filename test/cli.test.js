@@ -36,13 +36,16 @@ check("--window=640x360", r.config.window.width === 640 && r.config.window.heigh
 r = run(base, "--assets=relative/dir");
 check("--assets is resolved to an absolute path", r.assets === path.resolve("relative/dir"));
 
+r = run(base, "--output=960x1080");
+check("--output=960x1080", r.config.output.width === 960 && r.config.output.height === 1080);
+
 const before = JSON.stringify(base);
 run(base, "--hub=http://z:1", "--name=N", "--window=1x1");
 check("the original config object is not modified", JSON.stringify(base) === before);
 
 warnings.length = 0;
-r = run(base, "--port=abc", "--window=big", "--hub=");
-check("bad values are ignored with a warning", warnings.length === 3 && r.config.remote.port === 3000 && r.config.window.width === undefined && r.config.remote.host === undefined);
+r = run(base, "--port=abc", "--window=big", "--hub=", "--output=huge");
+check("bad values are ignored with a warning", warnings.length === 4 && r.config.output.width === undefined && r.config.remote.port === 3000 && r.config.window.width === undefined && r.config.remote.host === undefined);
 
 console.log(results.every(Boolean) ? "ALL PASSED" : "SOME FAILED");
 process.exit(results.every(Boolean) ? 0 : 1);

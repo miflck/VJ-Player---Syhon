@@ -6,6 +6,7 @@
 //   playlist.js playlists.json handling and random file picking
 //   player.js   media loading, playback, transitions
 //   sketches.js p5 sketch files as media
+//   words.js    word list text layer
 //   ui.js       canvas rendering
 //   settings.js settings panel (HTML)
 //   syphon.js   Syphon output (macOS)
@@ -32,7 +33,8 @@ function setup() {
 
 function draw() {
   const current = Player.current;
-  const isAnimated = current && current.kind !== "image" && !App.isBlackedOut; // video or sketch
+  updateWords();
+  const isAnimated = (current && current.kind !== "image" && !App.isBlackedOut) || (Words.text && !App.isBlackedOut); // video, sketch or visible word
   if (!isAnimated && !App.needsRedraw) {
     publishSyphon(false); // nothing changed on a still screen
     return;
@@ -45,6 +47,7 @@ function draw() {
     if (current.kind === "sketch") stepSketch(current);
     renderMedia(current);
   }
+  if (!App.isBlackedOut) renderWords();
 
   publishSyphon(true);
 }

@@ -78,3 +78,5 @@ body {
   border: 1px solid #2a323d; border-radius: 8px; padding: 8px 10px;
 }
 
+#settings .size-row { display: flex; align-items: center; gap: 8px; }
+#settings .size-row input { width: 110px; }

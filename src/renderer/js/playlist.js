@@ -2,7 +2,7 @@
 // between playlists and picking random files.
 
 const Playlist = {
-  lists: {}, // { [name]: { files: string[], full: boolean } }
+  lists: {}, // { [name]: { files: string[], full: boolean, words: string[] } }
   order: [], // ["Kong", "Space", ...] — cycling order
   index: 0,
   name: "",
@@ -23,6 +23,7 @@ async function loadPlaylists() {
     console.warn("No playlists found. Check playlists.json in your assets folder.");
     Playlist.files = [];
     Playlist.name = "";
+    setWords([]);
     openSettings();
     return false;
   }
@@ -38,6 +39,7 @@ function activatePlaylist(index) {
   Playlist.files = list.files || [];
   Playlist.full = !!list.full;
   Playlist.lastPicked = null;
+  setWords(list.words || []); // the previous playlist's words disappear immediately
   log(`Active playlist: "${name}" (${Playlist.files.length} file(s))${Playlist.full ? " [full playback]" : ""}`);
 }
 

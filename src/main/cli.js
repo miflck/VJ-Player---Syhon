@@ -8,6 +8,7 @@
 //   --syphon-name=<text> Syphon server name
 //   --assets=<folder>    assets folder (not saved)
 //   --window=<W>x<H>     visible window size, e.g. 960x540
+//   --output=<W>x<H>     output (canvas / Syphon) size, default 1920x1080, e.g. 960x1080
 //
 // (--instance=<name> is handled in main.js because it must run before the app starts.)
 
@@ -19,7 +20,13 @@ const path = require("path");
 function applyCommandLine(config, commandLine, warn = console.warn) {
   const has = (name) => commandLine.hasSwitch(name);
   const get = (name) => commandLine.getSwitchValue(name);
-  const config2 = { ...config, remote: { ...config.remote }, syphon: { ...config.syphon }, window: { ...config.window } };
+  const config2 = {
+    ...config,
+    remote: { ...config.remote },
+    syphon: { ...config.syphon },
+    window: { ...config.window },
+    output: { ...config.output },
+  };
 
   if (has("hub")) {
     if (get("hub")) {
@@ -49,6 +56,16 @@ function applyCommandLine(config, commandLine, warn = console.warn) {
       config2.window.height = Number(match[2]);
     } else {
       warn(`--window=${get("window")} should look like 960x540`);
+    }
+  }
+
+  if (has("output")) {
+    const match = /^(\d+)x(\d+)$/i.exec(get("output"));
+    if (match) {
+      config2.output.width = Number(match[1]);
+      config2.output.height = Number(match[2]);
+    } else {
+      warn(`--output=${get("output")} should look like 1920x1080`);
     }
   }
 

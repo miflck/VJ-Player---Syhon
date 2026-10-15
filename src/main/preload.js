@@ -58,7 +58,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   toggleFullscreen: () => ipcRenderer.invoke("toggle-fullscreen"),
   quitApp: () => ipcRenderer.invoke("quit-app"),
   getInstanceInfo: () => ipcRenderer.invoke("get-instance-info"),
+  instance: ipcRenderer.sendSync("get-instance-info-sync"), // { instance, title, syphonName, output }
   // remote control (socket.io lives in the main process)
+  launchInstance: () => ipcRenderer.invoke("launch-instance"),
+  setOutputSize: (size) => ipcRenderer.invoke("set-output-size", size),
   getRemoteInfo: () => ipcRenderer.invoke("get-remote-info"),
   setRemoteSettings: (request) => ipcRenderer.invoke("set-remote-settings", request),
   onRemoteCommand: (callback) => ipcRenderer.on("remote-command", (_event, command) => callback(command)),

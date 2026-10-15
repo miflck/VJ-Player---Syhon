@@ -33,6 +33,10 @@ function isTypingInSettings() {
 
 async function refreshSettings() {
   byId("settings-assets").textContent = App.assetsPath || "No folder selected";
+  if (!byId("output-width").value) {
+    byId("output-width").value = Config.OUTPUT_WIDTH;
+    byId("output-height").value = Config.OUTPUT_HEIGHT;
+  }
 
   const info = await window.electronAPI.getRemoteInfo();
   setRemoteMode(info.mode);
@@ -108,4 +112,26 @@ byId("mode-client").addEventListener("click", () => {
 byId("remote-apply").addEventListener("click", applyRemoteSettings);
 byId("hub-url").addEventListener("keydown", (event) => {
   if (event.key === "Enter") applyRemoteSettings();
+});
+
+async function applyOutputSize() {
+  const status = byId("output-status");
+  const width = Number(byId("output-width").value);
+  const height = Number(byId("output-height").value);
+  const result = await window.electronAPI.setOutputSize({ width, height });
+  status.className = result.ok ? "status ok" : "status error";
+  status.textContent = result.ok
+    ? width === Config.OUTPUT_WIDTH && height === Config.OUTPUT_HEIGHT
+      ? "Saved."
+      : `Saved ${width}×${height}. Restart the player to use it.`
+    : result.error;
+}
+
+byId("output-apply").addEventListener("click", applyOutputSize);
+
+byId("launch-instance").addEventListener("click", async () => {
+  const status = byId("launch-status");
+  const result = await window.electronAPI.launchInstance();
+  status.className = result.ok ? "status ok" : "status error";
+  status.textContent = result.ok ? `Started ${result.name}.` : result.error;
 });
