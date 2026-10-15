@@ -1,0 +1,9 @@
+{
+  "remote": {
+    "enabled": true,
+    "host": true,
+    "port": 3000,
+    "token": "change-me",
+    "name": "Main Mac"
+  }
+}

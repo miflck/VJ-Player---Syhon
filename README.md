@@ -70,7 +70,7 @@ assets folder automatically (see below), and start playing.
 ├── native/                   Syphon native addon source (syphon_addon.mm)
 ├── frameworks/               Syphon.framework
 ├── test/                     Hub tests (npm test)
-├── examples/                 Example playlists.json and sketches
+├── examples/                 Example playlists.json, config.json (remote control) and sketches
 └── README.md
 ```
 
@@ -322,6 +322,19 @@ keys are optional:
 - `token`: a shared secret. When set, controllers and players must send it; open
   the page as `http://…:3000/?token=secret`.
 - `name`: how this player is listed in the controller (default: the computer's name).
+
+**Examples.** Copy one into the userData folder as `config.json` (or merge its
+`remote` part into your existing file) and restart the app:
+
+- `examples/config.host.example.json`: this machine runs the hub (and the
+  controller page) and plays. Use it on the main machine.
+- `examples/config.client.example.json`: this machine only plays and connects
+  to a hub elsewhere. Change `url` to the hub's address, e.g. the main machine's
+  `http://<ip>:3000` or a cloud hub's `https://…`. Use the same `token` on the
+  hub and on every player.
+
+The assets folder is not part of these files; the app asks for it on first launch
+and saves it next to the `remote` settings.
 
 **Security.** The hub listens on all network interfaces so other devices can
 reach it, and without a token anyone on the same network can control the

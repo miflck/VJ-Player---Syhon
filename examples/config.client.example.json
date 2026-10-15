@@ -1,0 +1,9 @@
+{
+  "remote": {
+    "enabled": true,
+    "host": false,
+    "url": "http://192.168.1.20:3000",
+    "token": "change-me",
+    "name": "Stage left"
+  }
+}
