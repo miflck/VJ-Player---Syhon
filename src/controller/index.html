@@ -59,6 +59,14 @@
     .player b { font-weight: 600; }
     .player .file { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
     .empty { color: var(--muted); font-size: 14px; }
+
+    /* One block per connected client, below the shared "All players" controls. */
+    .client { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+    .client h2 { margin: 0; color: var(--fg); font-size: 14px; }
+    .client .file { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+    .client button { background: var(--bg); min-height: 52px; }
+    .client .chips button.current { background: var(--fg); }
+    #clients { display: flex; flex-direction: column; gap: 20px; }
   </style>
 </head>
 <body>
@@ -67,6 +75,10 @@
     <h1>VJ Remote</h1>
     <div class="status"><span class="dot" id="dot"></span><span id="status">connecting…</span></div>
   </header>
+
+  <section>
+    <h2>All players</h2>
+  </section>
 
   <section>
     <h2>Media</h2>
@@ -82,6 +94,9 @@
       <button data-key="n" disabled>Next ▶ <small>N</small></button>
     </div>
     <div class="chips" id="chips" style="margin-top: var(--gap)"></div>
+    <div class="row" style="margin-top: var(--gap)">
+      <button id="spread" disabled>Spread playlists <small>player 1 → playlist 1, player 2 → playlist 2 …</small></button>
+    </div>
   </section>
 
   <section>
@@ -90,15 +105,20 @@
       <button class="toggle" id="t-blackout" data-key="a" disabled>Blackout <small>A</small></button>
       <button class="toggle" id="t-mask" data-key="m" disabled>Circle <small>M</small></button>
       <button class="toggle" id="t-syphon" data-key="y" disabled>Syphon <small>Y</small></button>
+      <button class="toggle" id="t-random" data-key="b" disabled>Random blackouts <small>B</small></button>
       <button data-key="f" disabled>Fullscreen <small>F</small></button>
       <button data-key="l" disabled>Reload <small>L</small></button>
     </div>
   </section>
 
   <section>
-    <h2>Now playing</h2>
-    <div class="players" id="players"><div class="empty">No player connected.</div></div>
+    <h2>Layout</h2>
+    <div class="row">
+      <button id="open-layout" data-launch="layout" disabled>Open players <small>this + ½ HD · HD · ½ HD · ½ HD</small></button>
+    </div>
   </section>
+
+  <div id="clients"><div class="empty">No player connected.</div></div>
 </main>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -112,6 +132,7 @@
   let players = [];
   let connected = false;
 
+  // command may carry { target: <player id> } to address a single player
   function send(command, button) {
     socket.emit("command", command, (reply) => {
       if (reply && !reply.ok) setStatus("warn", reply.error || "rejected");
@@ -125,16 +146,67 @@
     $("status").textContent = text;
   }
 
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  // A button that sends `command`, plus `target` when given.
+  function commandButton(label, command, target, className) {
+    const b = el("button", className);
+    b.append(label);
+    b.addEventListener("click", () => send(target ? { ...command, target } : command, b));
+    return b;
+  }
+
+  function playlistChips(player, target) {
+    const chips = el("div", "chips");
+    chips.append(...(player.playlists || []).map((name, index) => {
+      const chip = commandButton(name, { playlist: index }, target);
+      chip.classList.toggle("current", index === player.playlist);
+      return chip;
+    }));
+    return chips;
+  }
+
+  // The block for one connected player: its own media / playlist / output controls.
+  function clientSection(p) {
+    const box = el("section", "client");
+    box.append(el("h2", "", p.name || "Player"));
+    box.append(el("div", "file", (p.playlists ? `${p.playlists[p.playlist] ?? ""} · ` : "") + (p.file ? `${p.kind}: ${p.file}` : "nothing playing")));
+
+    box.append(commandButton("Next media", { key: "arrowright" }, p.id));
+
+    const nav = el("div", "row");
+    nav.append(commandButton("◀ Previous", { key: "x" }, p.id), commandButton("Next ▶", { key: "n" }, p.id));
+    box.append(nav, playlistChips(p, p.id));
+
+    const out = el("div", "row three");
+    for (const [label, key, on] of [["Blackout", "a", p.blackout], ["Circle", "m", p.mask], ["Syphon", "y", p.syphon], ["Random blackouts", "b", p.randomBlackouts]]) {
+      const b = commandButton(label, { key }, p.id, "toggle");
+      b.classList.toggle("active", !!on);
+      out.append(b);
+    }
+    box.append(out);
+    return box;
+  }
+
   function render() {
     const ready = connected && players.length > 0;
     buttons.forEach((b) => (b.disabled = !ready));
+    $("spread").disabled = !ready;
+    $("open-layout").disabled = !connected; // works even when no player is open yet
     setStatus(!connected ? "" : ready ? "on" : "warn",
       !connected ? "connecting…" : ready ? `${players.length} player${players.length > 1 ? "s" : ""}` : "no player");
 
+    // "All players" shows the first player's state; its buttons act on every player
     const lead = players[0] || {};
     $("t-blackout").classList.toggle("active", !!lead.blackout);
     $("t-mask").classList.toggle("active", !!lead.mask);
     $("t-syphon").classList.toggle("active", !!lead.syphon);
+    $("t-random").classList.toggle("active", !!lead.randomBlackouts);
 
     const chips = $("chips");
     chips.replaceChildren(...(lead.playlists || []).map((name, index) => {
@@ -146,24 +218,28 @@
       return chip;
     }));
 
-    const list = $("players");
-    if (!players.length) { list.innerHTML = '<div class="empty">No player connected.</div>'; return; }
-    list.replaceChildren(...players.map((p) => {
-      const card = document.createElement("div");
-      card.className = "player";
-      const name = document.createElement("b");
-      name.textContent = p.name || "Player";
-      const where = document.createElement("span");
-      where.textContent = p.playlists ? ` · ${p.playlists[p.playlist] ?? ""}` : "";
-      const file = document.createElement("div");
-      file.className = "file";
-      file.textContent = p.file ? `${p.kind}: ${p.file}` : "nothing playing";
-      card.append(name, where, file);
-      return card;
-    }));
+    $("clients").replaceChildren(...(players.length ? players.map(clientSection) : [el("div", "empty", "No player connected.")]));
   }
 
   buttons.forEach((b) => b.addEventListener("click", () => send({ key: b.dataset.key }, b)));
+
+  // Gives each player its own playlist: players in name order (numbers sorted naturally), playlist 1, 2, 3 …
+  // (starts over when there are more players than playlists)
+  $("spread").addEventListener("click", (e) => {
+    const sorted = players; // already in name order
+    const count = (sorted[0] && sorted[0].playlists || []).length;
+    if (!count) return;
+    sorted.forEach((p, i) => send({ playlist: i % count, target: p.id }));
+    e.currentTarget.classList.add("sent");
+    setTimeout(() => e.currentTarget.classList.remove("sent"), 120);
+  });
+
+  // Opens a set of new players on the machine that runs the hub (asks first: it starts 5 windows)
+  $("open-layout").addEventListener("click", (e) => {
+    if (!confirm("Open 4 more players (½ HD, HD, ½ HD, ½ HD)?")) return;
+    socket.emit("command", { launch: "layout" }, (reply) => setStatus(reply && reply.ok ? "on" : "warn", reply && reply.ok ? `opening ${reply.count} players…` : (reply && reply.error) || "failed"));
+    if (navigator.vibrate) navigator.vibrate(10);
+  });
 
   // the same keys work on a keyboard
   addEventListener("keydown", (e) => {
@@ -176,7 +252,9 @@
   socket.on("connect", () => { connected = true; render(); });
   socket.on("disconnect", () => { connected = false; players = []; render(); });
   socket.on("connect_error", (e) => { connected = false; setStatus("warn", e.message === "unauthorized" ? "wrong token" : "connecting…"); });
-  socket.on("players", (list) => { players = list; render(); });
+  // players are listed in name order (numbers sorted naturally: "… 2" before "… 10")
+  const byName = (a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true });
+  socket.on("players", (list) => { players = [...list].sort(byName); render(); });
   render();
 </script>
 </body>

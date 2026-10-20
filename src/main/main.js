@@ -325,6 +325,7 @@ app.whenReady().then(() => {
   createWindow();
   startRemote({
     getWindow: () => mainWindow,
+    launchLayout,
     userConfig: settings,
     instance,
     // host/client chosen in the settings screen is remembered
@@ -398,7 +399,7 @@ ipcMain.handle("get-media-files", async () => {
 
       if (files.length > 0) {
         const words = await readWords(assetsPath, [...new Set(wordFiles)]);
-        playlists[entry.name] = { files, full: entry.full === true, words };
+        playlists[entry.name] = { files, full: entry.full === true, sequential: entry.sequential === true, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
         order.push(entry.name);
       } else {
         console.warn(`Playlist "${entry.name}" has no valid media files — skipping`);
@@ -465,12 +466,14 @@ app.on("will-quit", () => {
   }
 });
 
-ipcMain.handle("launch-instance", () => {
+// Starts another copy. `taken` lists instance numbers already handed out in this batch,
+// because a copy only registers itself once it has started.
+function launchInstance(extraArgs = [], taken = []) {
   let n = 2;
-  while (isRunning(String(n))) n++;
+  while (isRunning(String(n)) || taken.includes(String(n))) n++;
   const name = String(n);
   // unpackaged (npm start) electron needs the app folder as first argument
-  const args = app.isPackaged ? [`--instance=${name}`] : [app.getAppPath(), `--instance=${name}`];
+  const args = [...(app.isPackaged ? [] : [app.getAppPath()]), `--instance=${name}`, ...extraArgs];
   try {
     const child = spawn(process.execPath, args, { detached: true, stdio: "ignore" });
     child.on("error", (error) => console.error("Could not launch instance:", error));
@@ -478,8 +481,26 @@ ipcMain.handle("launch-instance", () => {
   } catch (error) {
     return { ok: false, error: error.message };
   }
-  return { ok: true, name: `VJ Player ${name}` };
-});
+  return { ok: true, name: `VJ Player ${name}`, number: name };
+}
+
+ipcMain.handle("launch-instance", () => launchInstance());
+
+// Layout of five players, left to right: two half HD, one HD, two half HD. The running player is
+// the first one, so the controller's "Open players" button starts the other four (instances 2 to 5).
+// Change the sizes with "layout" in config.json, e.g. ["960x1080", "1920x1080"].
+const DEFAULT_LAYOUT = ["960x1080", "960x1080", "1920x1080", "960x1080", "960x1080"];
+
+function launchLayout() {
+  const layout = Array.isArray(settings.layout) && settings.layout.length ? settings.layout : DEFAULT_LAYOUT;
+  const taken = [];
+  for (const size of layout.slice(1)) {
+    const result = launchInstance([`--output=${size}`], taken);
+    if (!result.ok) return { ok: false, error: result.error };
+    taken.push(result.number);
+  }
+  return { ok: true, count: layout.length - 1 };
+}
 
 // Output size chosen in the settings screen: saved to config.json, used from the next start
 ipcMain.handle("set-output-size", (_event, { width, height }) => {

@@ -14,21 +14,33 @@ const path = require("path");
 const { Server } = require("socket.io");
 
 // Keys a controller may press. They are the same keys as on the keyboard; players check this list again.
-const REMOTE_KEYS = ["n", "x", "arrowright", "a", "m", "l", "f", "y"];
+const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "m", "l", "f", "y"];
 
 // Returns a clean command, or null if it is not allowed.
 //   { key: "n" }      press a key
 //   { playlist: 2 }   jump to a playlist by index
+// Either may carry "target": a player id (from the "players" list) to address only that
+// player; without it the command goes to every player.
 function sanitizeCommand(cmd) {
   if (!cmd || typeof cmd !== "object") return null;
-  if (typeof cmd.key === "string" && REMOTE_KEYS.includes(cmd.key.toLowerCase())) return { key: cmd.key.toLowerCase() };
-  if (Number.isInteger(cmd.playlist) && cmd.playlist >= 0) return { playlist: cmd.playlist };
-  return null;
+
+  let clean = null;
+  if (typeof cmd.key === "string" && REMOTE_KEYS.includes(cmd.key.toLowerCase())) clean = { key: cmd.key.toLowerCase() };
+  else if (Number.isInteger(cmd.playlist) && cmd.playlist >= 0) clean = { playlist: cmd.playlist };
+  if (!clean) return null;
+
+  if (cmd.target !== undefined) {
+    if (typeof cmd.target !== "string" || !cmd.target) return null;
+    clean.target = cmd.target;
+  }
+  return clean;
 }
 
 const CONTENT_TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css" };
 
-function startHub({ port = 3000, token = "", staticDir = null, log = console.log } = {}) {
+// onLaunchLayout (optional): called for { launch: "layout" }, which opens a set of new players
+// on the machine that hosts the hub. It is not relayed to the players.
+function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = null, log = console.log } = {}) {
   const server = http.createServer((req, res) => {
     if (!staticDir) return res.writeHead(404).end();
 
@@ -77,12 +89,21 @@ function startHub({ port = 3000, token = "", staticDir = null, log = console.log
     socket.emit("players", [...players.values()]);
 
     socket.on("command", (cmd, ack) => {
+      if (cmd && cmd.launch === "layout") {
+        const reply = onLaunchLayout ? onLaunchLayout() : { ok: false, error: "this hub cannot open players" };
+        log(`[remote] open layout → ${JSON.stringify(reply)}`);
+        return typeof ack === "function" && ack(reply);
+      }
       const clean = sanitizeCommand(cmd);
       if (!clean) return typeof ack === "function" && ack({ ok: false, error: "command not allowed" });
 
-      log(`[remote] command ${JSON.stringify(clean)} → ${players.size} player(s)`);
-      io.to("players").emit("command", clean);
-      if (typeof ack === "function") ack({ ok: true, players: players.size });
+      const { target, ...command } = clean;
+      if (target && !players.has(target)) return typeof ack === "function" && ack({ ok: false, error: "player not connected" });
+
+      log(`[remote] command ${JSON.stringify(clean)} → ${target ? "1 player" : `${players.size} player(s)`}`);
+      if (target) io.to(target).emit("command", command);
+      else io.to("players").emit("command", command);
+      if (typeof ack === "function") ack({ ok: true, players: target ? 1 : players.size });
     });
   });
 

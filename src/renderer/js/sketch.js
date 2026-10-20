@@ -31,10 +31,37 @@ function setup() {
   initRemote();
 }
 
+// Random blackouts: while enabled, the output alternates between visible and dark for random times.
+function updateBlackouts() {
+  if (!App.randomBlackouts) {
+    if (App.randomDark) {
+      App.randomDark = false;
+      invalidate();
+    }
+    return;
+  }
+  const now = millis();
+  if (now < App.blackoutNextAt) return;
+
+  App.randomDark = !App.randomDark;
+  const range = App.randomDark ? Config.BLACKOUT_HOLD : Config.BLACKOUT_GAP;
+  App.blackoutNextAt = now + random(range.min, range.max) * 1000;
+  invalidate();
+}
+
+function toggleRandomBlackouts() {
+  App.randomBlackouts = !App.randomBlackouts;
+  App.randomDark = false;
+  App.blackoutNextAt = millis() + random(Config.BLACKOUT_GAP.min, Config.BLACKOUT_GAP.max) * 1000;
+  invalidate();
+}
+
 function draw() {
   const current = Player.current;
   updateWords();
-  const isAnimated = (current && current.kind !== "image" && !App.isBlackedOut) || (Words.text && !App.isBlackedOut); // video, sketch or visible word
+  updateBlackouts();
+  const dark = App.isBlackedOut || App.randomDark;
+  const isAnimated = (current && current.kind !== "image" && !dark) || (Words.text && !dark); // video, sketch or visible word
   if (!isAnimated && !App.needsRedraw) {
     publishSyphon(false); // nothing changed on a still screen
     return;
@@ -43,11 +70,11 @@ function draw() {
 
   background(0);
 
-  if (current && !App.isBlackedOut) {
+  if (current && !dark) {
     if (current.kind === "sketch") stepSketch(current);
     renderMedia(current);
   }
-  if (!App.isBlackedOut) renderWords();
+  if (!dark) renderWords();
 
   publishSyphon(true);
 }
@@ -92,6 +119,7 @@ const KEY_ACTIONS = {
   x: () => switchPlaylist(-1),
   arrowright: advance, // skip to another random file within the playlist
   a: () => (App.isBlackedOut = !App.isBlackedOut), // hides output without stopping playback
+  b: toggleRandomBlackouts, // random blackouts on/off
   m: () => (App.isMasked = !App.isMasked), // circle mask
   l: reloadPlaylists, // re-read playlists.json
   e: () => window.electronAPI.openPlaylistsConfig(), // open playlists.json in the default editor

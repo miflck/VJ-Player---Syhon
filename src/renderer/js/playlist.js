@@ -2,13 +2,15 @@
 // between playlists and picking random files.
 
 const Playlist = {
-  lists: {}, // { [name]: { files: string[], full: boolean, words: string[] } }
+  lists: {}, // { [name]: { files: string[], full: boolean, words: string[], wordOptions: object } }
   order: [], // ["Kong", "Space", ...] — cycling order
   index: 0,
   name: "",
   files: [], // media files in the *currently active* playlist
   lastPicked: null, // never picked twice in a row (when the playlist has more than one file)
   full: false, // true → play videos in full, show images indefinitely
+  sequential: false, // true → files play one after another in name order (implies full)
+  seqIndex: 0, // next file to play when sequential
 };
 
 // Fetches playlists.json. Returns false (and opens settings) if there are none.
@@ -37,9 +39,12 @@ function activatePlaylist(index) {
   Playlist.index = index;
   Playlist.name = name;
   Playlist.files = list.files || [];
-  Playlist.full = !!list.full;
+  Playlist.sequential = !!list.sequential;
+  Playlist.full = !!list.full || Playlist.sequential;
+  Playlist.seqIndex = 0;
+  if (Playlist.sequential) Playlist.files = [...Playlist.files].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   Playlist.lastPicked = null;
-  setWords(list.words || []); // the previous playlist's words disappear immediately
+  setWords(list.words || [], list.wordOptions); // the previous playlist's words disappear immediately
   log(`Active playlist: "${name}" (${Playlist.files.length} file(s))${Playlist.full ? " [full playback]" : ""}`);
 }
 
@@ -78,6 +83,11 @@ function gotoPlaylist(index) {
 
 // Picks one file at random, biased by each file's @w weight flag.
 function pickRandomFile() {
+  if (Playlist.sequential && Playlist.files.length) {
+    const file = Playlist.files[Playlist.seqIndex % Playlist.files.length];
+    Playlist.seqIndex = (Playlist.seqIndex + 1) % Playlist.files.length;
+    return file;
+  }
   if (Playlist.files.length <= 1) return Playlist.files[0] || null;
 
   const files = Playlist.files.filter((f) => f !== Playlist.lastPicked);

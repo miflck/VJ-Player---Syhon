@@ -43,6 +43,16 @@ const check = (name, ok) => { results.push(ok); console.log(ok ? "PASS" : "FAIL"
   check("playlist index reaches every player", gotA.some((c) => c.playlist === 2) && gotB.some((c) => c.playlist === 2));
   check("ack reports player count", r1.ok && r1.players === 2 && r2.ok && r3.ok);
 
+  // addressing a single player
+  const bId = lastPlayers.find((p) => p.name === "B").id;
+  gotA.length = gotB.length = 0;
+  const rt = await ack({ key: "x", target: bId });
+  const rp = await ack({ playlist: 3, target: bId });
+  const rm = await ack({ key: "x", target: "nobody" });
+  await sleep(200);
+  check("targeted command reaches only that player", gotB.length === 2 && gotB[0].key === "x" && gotB[0].target === undefined && gotA.length === 0 && rt.ok && rt.players === 1 && rp.ok);
+  check("targeting an unknown player is refused", rm.ok === false);
+
   const before = gotA.length;
   const bads = await Promise.all([ack({ key: "escape" }), ack({ key: "e" }), ack({ key: "s" }), ack({ key: "backspace" }), ack({ playlist: -1 }), ack({ playlist: "1" }), ack("n"), ack(null)]);
   await sleep(200);

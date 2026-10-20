@@ -95,10 +95,19 @@ async function prepareVideo(slot, token) {
   let segment = duration;
   let loop = false;
 
-  if (!isFullPlayback(slot.filename)) {
+  if (isFullPlayback(slot.filename)) {
+    // The only file of a full playlist restarts seamlessly by itself instead of being reloaded
+    slot.loops = loop = Playlist.files.length <= 1;
+  } else {
     segment = getFlags(slot.filename).duration ?? random(Config.VIDEO_SEGMENT_TIME.min, Config.VIDEO_SEGMENT_TIME.max);
-    loop = segment > duration;
-    start = loop ? 0 : random(0, duration - segment);
+    if (segment > duration) {
+      loop = true; // longer than the video: start at 0 and loop
+    } else if (Config.VIDEO_WRAP) {
+      start = random(0, duration); // anywhere; a segment running past the end continues from the beginning
+      loop = start + segment > duration;
+    } else {
+      start = random(0, duration - segment);
+    }
   }
 
   log(`Video: duration=${duration.toFixed(2)}s start=${start.toFixed(2)}s segment=${segment.toFixed(2)}s loop=${loop}`);
@@ -236,7 +245,23 @@ function playVideo(slot) {
   );
 
   el.play().catch((error) => console.warn("play() failed:", error));
-  scheduleAdvance(slot.segment);
+
+  if (slot.loops) return; // loops forever, nothing to advance to
+
+  if (isFullPlayback(slot.filename)) {
+    // Full video: go on when it has really ended (a timer alone drifts from the playback
+    // and either cuts the end or leaves the last frame standing). The timer is only a fallback.
+    el.addEventListener(
+      "ended",
+      () => {
+        if (token === Player.playToken) advance();
+      },
+      { once: true },
+    );
+    scheduleAdvance(slot.segment + 3);
+  } else {
+    scheduleAdvance(slot.segment);
+  }
 }
 
 // Resolves once the seek has completed (or after a 2s safety timeout).

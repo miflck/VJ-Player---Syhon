@@ -3,7 +3,7 @@
 //
 // A command is { key: "n" } (same as pressing that key) or { playlist: 2 }.
 
-const REMOTE_KEYS = new Set(["n", "x", "arrowright", "a", "m", "l", "f", "y"]); // never e, s, escape, backspace
+const REMOTE_KEYS = new Set(["n", "x", "arrowright", "a", "b", "m", "l", "f", "y"]); // never e, s, escape, backspace
 
 let lastRemoteState = "";
 
@@ -36,6 +36,7 @@ function publishRemoteState() {
     file: Player.current ? Player.current.filename : null,
     kind: Player.current ? Player.current.kind : null,
     blackout: App.isBlackedOut,
+    randomBlackouts: App.randomBlackouts,
     mask: App.isMasked,
     syphon: SyphonOut.enabled,
   });

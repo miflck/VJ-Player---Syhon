@@ -121,6 +121,18 @@ clip2@w5.mp4       → weight 5   (5× more likely to be picked)
 clip3@w0.2.mp4     → weight 0.2 (rarely picked)
 ```
 
+### Playing files in order
+
+Add `"sequential": true` to a playlist entry to play its files one after another
+in name order (`Reel_2` before `Reel_10`) instead of randomly, looping at the end.
+Sequential implies `"full"`: every video plays from start to end.
+
+```json
+{ "name": "datadesignandart", "folder": "datadesignandart", "sequential": true }
+```
+
+`→` skips to the next file in the order; re-selecting the playlist starts at the first.
+
 ### Custom clip duration
 
 Independent of weighting, you can also control how long a video clip plays
@@ -196,12 +208,32 @@ Welcome to the Infotage
 ```
 
 - One word or phrase per line. Words appear one at a time in the centre of the screen,
-  fade in, stay for a few seconds, fade out, pause, and repeat in random order.
+  in capitals, one word per line of text. The letters appear one after another
+  (W, O, R, T …), stay for a few seconds, fade out together, then pause. Repeats in random order.
 - The words run on their own timeline, independent of the clips underneath.
 - Switching playlists removes the text immediately; the new playlist shows its
   own words (or none, if it has no word list).
 - The text is part of the output (Syphon, blackout), but is not cut off by the
-  circle mask. Timing and size are in `Config` (`WORD_*`) in `config.js`.
+  circle mask. The defaults for timing and size are in `Config` (`WORD_*`) in `config.js`;
+  each playlist can override them (see below).
+- Look (all in `Config` in `config.js`): `WORD_COLORS` (palette; each word picks one at
+  random), `WORD_LETTER_DELAY` (seconds between letters), `WORD_LEADING` (line height),
+  `WORD_SHADOW` (soft shadow on/off) and `WORD_FONT_FILE` (a font from
+  `src/renderer/fonts/`, e.g. `"Everett-Bold-web.woff"`; empty = Helvetica bold).
+- Colour per clip: add `@color3` (3rd entry of `WORD_COLORS`) or `@colorff00ff` (hex) to a
+  filename and the words shown over that clip use that colour.
+- Per-playlist timing: add a `"words"` object to the playlist entry in
+  `playlists.json`. All keys are optional; `hold` and `gap` are `[min, max]`
+  seconds (a single number = fixed):
+
+  ```json
+  { "name": "This Machine", "folder": "This Machine",
+    "words": { "fade": 0.2, "hold": [1, 2], "gap": [10, 30], "size": 0.15 } }
+  ```
+
+  `fade` = fade in/out, `hold` = fully visible, `gap` = pause without a word,
+  `size` = font size as a fraction of the screen height. Press `L` to apply
+  changes.
 - Word lists also work in an explicit `files` list. A playlist still needs at
   least one media file.
 
@@ -258,7 +290,7 @@ registerSketch((p, { width, height, assetUrl }) => {
 
 ### Circle mask
 
-Press `M` to toggle a circular mask over the output: a circle with
+The mask is off by default (`App.isMasked` in `config.js`). Press `M` to toggle a circular mask over the output: a circle with
 `radius = screen height / 2` (so its diameter equals the screen height),
 centered on screen. Whatever's playing is clipped to that circle — nothing
 outside it is drawn (the rest of the canvas stays black) — and sized
@@ -301,8 +333,12 @@ console, for example `http://192.168.2.8:3000`.
 
 The page has buttons for **Next media**, **Previous / Next playlist** (and
 each playlist by name), **Blackout**, **Circle mask**, **Syphon**,
-**Fullscreen** and **Reload**. Its keyboard shortcuts are the same as in the
-player. It also shows what each connected player is playing.
+**Fullscreen** and **Reload**. The top block, **All players**, sends every
+click to every connected player (keyboard shortcuts are the same as in the
+player). Below it, each connected player gets its own block showing what it
+is playing, with its own Next media, Previous / Next playlist, playlist
+buttons and Blackout / Circle / Syphon toggles, so a single player can be
+switched without touching the others.
 
 ```
 controller ──command──▶ hub ──command──▶ every player
@@ -310,7 +346,9 @@ controller ◀──players── hub ◀───state─── every player
 ```
 
 A command is `{ "key": "n" }` (same as pressing that key) or
-`{ "playlist": 2 }` (jump to that playlist). Allowed keys: `n x → a m l f y`.
+`{ "playlist": 2 }` (jump to that playlist). Add `"target": "<player id>"` (the
+`id` from the `players` list) to address a single player instead of all of
+them. Allowed keys: `n x → a m l f y`.
 `E`, `S`, `Esc` and `Backspace` can't be sent remotely. Any socket.io client
 can act as a controller, e.g. from another app:
 
@@ -467,6 +505,17 @@ Put the lines you use into a small shell script, one per setup. Values with spac
 need quotes, e.g. `--name="Right screen"`. There is no token option; for a shared
 network set `"token"` in `config.json` (see Remote control).
 
+### Opening a set of players from the controller
+
+The controller page has an **Open players** button (under "Layout"). The player that
+hosts the hub counts as the first of five (two half HD, one HD, two half HD); the button
+starts the other four as instances 2 to 5, with output sizes 960×1080, 1920×1080,
+960×1080 and 960×1080. It asks for confirmation first. For the layout to match, start the
+first player with `--output=960x1080`. Change the sizes with
+`"layout": ["960x1080", "960x1080", "1920x1080", "960x1080", "960x1080"]` in `config.json`
+(the first entry is the running player). It does not work with a standalone `npm run hub`,
+which has no player to start them from.
+
 ## Keyboard controls
 
 | Key         | Action                                                  |
@@ -477,6 +526,7 @@ network set `"token"` in `config.json` (see Remote control).
 | `X`         | Previous playlist                                       |
 | `→` (Right) | Skip to another random file in this playlist            |
 | `A`         | Toggle blackout (hide output without stopping playback) |
+| `B`         | Toggle random blackouts (also a button in the controller; timing: `BLACKOUT_GAP` / `BLACKOUT_HOLD` in `config.js`) |
 | `M`         | Toggle circle mask (see below)                          |
 | `L`         | Reload `playlists.json` (pick up edits live)            |
 | `E`         | Open `playlists.json` in your default editor            |

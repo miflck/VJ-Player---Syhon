@@ -28,7 +28,7 @@ function lanUrls(port) {
 }
 
 // saveRemote(partial): called when the settings screen changes host/url, to store it in config.json
-function startRemote({ getWindow, userConfig = {}, instance = "", saveRemote = () => {} }) {
+function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", saveRemote = () => {} }) {
   const defaultName = instance ? `${os.hostname()} ${instance}` : os.hostname();
   const settings = { enabled: true, host: true, port: 3000, url: "", token: "", name: defaultName, ...(userConfig.remote || {}) };
 
@@ -79,7 +79,7 @@ function startRemote({ getWindow, userConfig = {}, instance = "", saveRemote = (
     if (!settings.host) return connectClient(gen);
 
     try {
-      hub = await startHub({ port: settings.port, token: settings.token, staticDir: path.join(__dirname, "..", "controller") });
+      hub = await startHub({ port: settings.port, token: settings.token, onLaunchLayout: launchLayout, staticDir: path.join(__dirname, "..", "controller") });
       if (gen !== generation) return; // stopped again while starting
       state.hosting = true;
       state.urls = lanUrls(settings.port);
