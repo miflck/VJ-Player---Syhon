@@ -96,6 +96,7 @@
     <div class="chips" id="chips" style="margin-top: var(--gap)"></div>
     <div class="row" style="margin-top: var(--gap)">
       <button id="spread" disabled>Spread playlists <small>player 1 → playlist 1, player 2 → playlist 2 …</small></button>
+      <button id="spread-random" disabled>Random spread <small>a different playlist for every player</small></button>
     </div>
   </section>
 
@@ -197,6 +198,7 @@
     const ready = connected && players.length > 0;
     buttons.forEach((b) => (b.disabled = !ready));
     $("spread").disabled = !ready;
+    $("spread-random").disabled = !ready;
     $("open-layout").disabled = !connected; // works even when no player is open yet
     setStatus(!connected ? "" : ready ? "on" : "warn",
       !connected ? "connecting…" : ready ? `${players.length} player${players.length > 1 ? "s" : ""}` : "no player");
@@ -230,6 +232,26 @@
     const count = (sorted[0] && sorted[0].playlists || []).length;
     if (!count) return;
     sorted.forEach((p, i) => send({ playlist: i % count, target: p.id }));
+    e.currentTarget.classList.add("sent");
+    setTimeout(() => e.currentTarget.classList.remove("sent"), 120);
+  });
+
+  // Gives every player a different, random playlist. With more players than playlists, the
+  // shuffle starts over, so playlists are repeated as little as possible.
+  $("spread-random").addEventListener("click", (e) => {
+    const count = (players[0] && players[0].playlists || []).length;
+    if (!count) return;
+    let pool = [];
+    players.forEach((p) => {
+      if (!pool.length) {
+        pool = [...Array(count).keys()];
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+      }
+      send({ playlist: pool.pop(), target: p.id });
+    });
     e.currentTarget.classList.add("sent");
     setTimeout(() => e.currentTarget.classList.remove("sent"), 120);
   });
