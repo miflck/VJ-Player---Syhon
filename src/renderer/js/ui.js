@@ -1,29 +1,34 @@
 // Rendering: media on the canvas (the settings screen is HTML, see settings.js).
 
-function renderMedia(slot) {
-  const media = slot.media;
-  const mediaWidth = (slot.kind === "video" ? media.elt.videoWidth : media.width) || width;
-  const mediaHeight = (slot.kind === "video" ? media.elt.videoHeight : media.height) || height;
-
-  // Masked: media is sized against the circle's bounding square (side = the smaller canvas side).
+// The area media is drawn into: the whole canvas, or the circle's bounding square when masked.
+function outputBounds() {
   const diameter = Math.min(width, height);
-  const bounds = App.isMasked
+  return App.isMasked
     ? { left: (width - diameter) / 2, top: (height - diameter) / 2, width: diameter, height: diameter }
     : { left: 0, top: 0, width, height };
+}
 
-  const fit = getFlags(slot.filename).fit;
-  const draw = calculateDrawDimensions(mediaWidth, mediaHeight, slot.kind, fit, bounds);
+function renderMedia(slot) {
+  const bounds = outputBounds();
+  let draw;
+  if (slot.kind !== "text") {
+    const media = slot.media;
+    const mediaWidth = (slot.kind === "video" ? media.elt.videoWidth : media.width) || width;
+    const mediaHeight = (slot.kind === "video" ? media.elt.videoHeight : media.height) || height;
+    draw = calculateDrawDimensions(mediaWidth, mediaHeight, slot.kind, getFlags(slot.filename).fit, bounds);
+  }
+  const paint = () => (slot.kind === "text" ? drawText(slot, bounds) : drawMedia(slot, draw));
 
   if (!App.isMasked) {
-    drawMedia(slot, draw);
+    paint();
     return;
   }
 
   drawingContext.save();
   drawingContext.beginPath();
-  drawingContext.arc(width / 2, height / 2, diameter / 2, 0, TWO_PI);
+  drawingContext.arc(width / 2, height / 2, bounds.width / 2, 0, TWO_PI);
   drawingContext.clip();
-  drawMedia(slot, draw);
+  paint();
   drawingContext.restore();
 }
 

@@ -29,9 +29,22 @@ const Config = {
   WORD_LEADING: 0.9, // line height as a multiple of the font size (tight)
   WORD_SHADOW: false, // soft drop shadow behind the words
   WORD_FONT_WEIGHT: "bold", // only used for the fallback font
+  // Text pages (see text.js): a .txt file in a playlist folder, left-aligned ragged-right on a coloured background.
+  // Text taller than the canvas scrolls slowly and is always shown to the end before the next file comes.
+  TEXT_SIZE: 0.06, // font size as a fraction of the output height (0.06 = 65 px at 1080)
+  TEXT_LEADING: 1.2, // line height as a multiple of the font size
+  TEXT_MARGIN: 0.08, // distance to the edges, as a fraction of the output height
+  TEXT_COLOR: "#000000",
+  TEXT_BACKGROUNDS: ["#7e8afb", "#c8fa32"], // each page picks one at random (never the same twice in a row)
+  TEXT_SCROLL_SPEED: 0.04, // scroll speed in output heights per second (0.04 = 43 px/s at 1080)
+  TEXT_SCROLL_PAUSE: 3, // seconds standing still before the scroll starts and after it has ended
+  TEXT_DISPLAY_TIME: { min: 8, max: 12 }, // seconds for text that fits on the canvas without scrolling
   // Random blackouts (controller button / "B"); each player runs its own timeline, in seconds
   BLACKOUT_GAP: { min: 10, max: 40 }, // picture on
   BLACKOUT_HOLD: { min: 1, max: 6 }, // picture dark
+  COLOR_GAP: { min: 10, max: 40 }, // random colours ("D"): picture on
+  COLOR_HOLD: { min: 1, max: 6 }, // random colours: colour shown
+  COLOR_FILL_COLORS: null, // palette for the colour button ("C"); null = WORD_COLORS
   PRELOAD_RETRY_LIMIT: 5,
   PRELOAD_RETRY_DELAY: 250, // ms
 };
@@ -41,6 +54,10 @@ const App = {
   assetsPath: "",
   showSettings: false,
   isBlackedOut: false, // "A" toggles this — hides output without stopping playback
+  colorFill: null, // "C" toggles this — the output is one flat colour from Config.WORD_COLORS (null = off)
+  randomColors: false, // "D" toggles this — now and then the output turns one flat colour for a while
+  randomColor: null, // the colour on screen right now during such a flash (null = picture visible)
+  colorNextAt: 0, // millis() of the next switch between flash and picture
   randomBlackouts: false, // "B" toggles this — the output goes dark now and then, at random
   randomDark: false, // true while such a random blackout is on
   blackoutNextAt: 0, // millis() of the next switch between dark and visible
@@ -60,6 +77,7 @@ function invalidate() {
 //   clip@w5.mp4      → weight 5 (5x more likely to be picked; default 1)
 //   clip@contain.mp4 → letterbox instead of fill/crop (default "cover")
 //   clip@color3.mp4  → words over this clip use the 3rd of Config.WORD_COLORS; clip@colorff00ff.mp4 → that hex colour
+//   page@bg2.txt     → text page on the 2nd of Config.TEXT_BACKGROUNDS; page@bgff00ff.txt → that hex colour
 //   clip@full.mp4    → this file plays in full (video to its end, image/sketch until skipped), whatever the playlist says
 //   Name@15s/sketch.js → flags also work in the name of a sketch folder
 //   clip@12s.mp4     → 12 second segment (videos); how long an image or sketch stays (images, sketches)
@@ -70,7 +88,7 @@ function invalidate() {
 const flagCache = new Map();
 
 function getFlags(filename) {
-  if (!filename) return { kind: "image", weight: 1, fit: "cover", duration: null, full: false, color: null };
+  if (!filename) return { kind: "image", weight: 1, fit: "cover", duration: null, full: false, color: null, bg: null };
 
   let flags = flagCache.get(filename);
   if (!flags) {
@@ -88,6 +106,14 @@ function parseColorFlag(filename) {
   return index >= 1 ? Config.WORD_COLORS[index - 1] || null : null;
 }
 
+// @bg2 → 2nd entry of Config.TEXT_BACKGROUNDS; @bgff00ff → that hex colour. null when absent.
+function parseBgFlag(filename) {
+  const hex = filename.match(/@bg-?([0-9a-f]{6})(?![0-9a-f])/i);
+  if (hex) return "#" + hex[1];
+  const index = parseInt((filename.match(/@bg-?(\d)(?!\d)/i) || [])[1], 10);
+  return index >= 1 ? Config.TEXT_BACKGROUNDS[index - 1] || null : null;
+}
+
 function parseFlags(filename) {
   const weight = parseFloat((filename.match(/@w(\d+(?:\.\d+)?)/i) || [])[1]);
 
@@ -99,11 +125,12 @@ function parseFlags(filename) {
   else if (filename.includes("_LONG")) duration = Config.VIDEO_SEGMENT_TIME.min * 3;
 
   return {
-    kind: /(^|[./])sketch\.js$/i.test(filename) ? "sketch" : /\.(mp4|mov)$/i.test(filename) ? "video" : "image",
+    kind: /(^|[./])sketch\.js$/i.test(filename) ? "sketch" : /\.(mp4|mov)$/i.test(filename) ? "video" : /\.txt$/i.test(filename) ? "text" : "image",
     weight: weight > 0 ? weight : 1,
     fit: /@contain\b/i.test(filename) ? "contain" : "cover",
     full: /@full\b/i.test(filename),
     color: parseColorFlag(filename),
+    bg: parseBgFlag(filename),
     duration,
   };
 }

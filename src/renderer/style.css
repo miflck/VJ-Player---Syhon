@@ -9,6 +9,14 @@ body {
   cursor: default;
 }
 
+/* Without a title bar the window is moved by dragging the picture (the settings screen stays clickable) */
+#sketch-container {
+  -webkit-app-region: drag;
+}
+#settings {
+  -webkit-app-region: no-drag;
+}
+
 #sketch-container {
   position: fixed;
   top: 0;

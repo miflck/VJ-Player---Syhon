@@ -44,8 +44,13 @@ function isWordsFile(filename) {
   return lower === "words.txt" || lower.endsWith(".words.txt");
 }
 
+// Any other .txt file is a text page: long text on a coloured background, scrolled if it is taller than the canvas
+function isTextFile(filename) {
+  return path.extname(filename).toLowerCase() === ".txt" && !isWordsFile(filename);
+}
+
 function isMediaFile(filename) {
-  return MEDIA_EXTENSIONS.includes(path.extname(filename).toLowerCase()) || isSketchFile(filename);
+  return MEDIA_EXTENSIONS.includes(path.extname(filename).toLowerCase()) || isSketchFile(filename) || isTextFile(filename);
 }
 
 // Name of the playlist config file that lives inside the assets folder
@@ -175,6 +180,19 @@ async function readWords(basePath, relativeFiles) {
   return words;
 }
 
+// Reads the text pages among the given files: { [relative path]: text }
+async function readTexts(basePath, relativeFiles) {
+  const texts = {};
+  for (const relPath of relativeFiles.filter(isTextFile)) {
+    try {
+      texts[relPath] = await fs.readFile(path.join(basePath, relPath), "utf8");
+    } catch (error) {
+      console.warn(`Could not read text file "${relPath}":`, error.message);
+    }
+  }
+  return texts;
+}
+
 // Validates an explicit list of file paths (relative to basePath), dropping
 // any that don't exist or aren't a supported media type.
 async function resolveExplicitFiles(basePath, relativeFiles) {
@@ -282,6 +300,7 @@ function createWindow() {
     x: win.x,
     y: win.y,
     useContentSize: true,
+    frame: win.frame === true, // no title bar by default; config.json "window": { "frame": true } brings it back
     title: instanceInfo().title,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -399,7 +418,8 @@ ipcMain.handle("get-media-files", async () => {
 
       if (files.length > 0) {
         const words = await readWords(assetsPath, [...new Set(wordFiles)]);
-        playlists[entry.name] = { files, full: entry.full === true, sequential: entry.sequential === true, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
+        const texts = await readTexts(assetsPath, files);
+        playlists[entry.name] = { files, texts, full: entry.full === true, sequential: entry.sequential === true || entry.hold === true, hold: entry.hold === true, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
         order.push(entry.name);
       } else {
         console.warn(`Playlist "${entry.name}" has no valid media files — skipping`);

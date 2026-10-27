@@ -47,6 +47,11 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
     ...state,
   });
 
+  function sendToPage(channel, payload) {
+    const win = getWindow();
+    if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
+  }
+
   function connectClient(gen) {
     const hubUrl = settings.url || (settings.host ? `http://127.0.0.1:${settings.port}` : "");
     if (!hubUrl || gen !== generation) return;
@@ -59,17 +64,18 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
       console.log(`[remote] connected to ${hubUrl}`);
       if (lastState) socket.emit("state", lastState);
     });
-    socket.on("disconnect", () => (state.connected = false));
+    socket.on("disconnect", () => {
+      state.connected = false;
+      sendToPage("remote-peers", []); // without the hub there is nothing to avoid
+    });
     socket.on("connect_error", (error) => {
       state.connected = false;
       console.warn(`[remote] cannot reach ${hubUrl}: ${error.message}`);
     });
 
     // hub → this player's page
-    socket.on("command", (cmd) => {
-      const win = getWindow();
-      if (win && !win.isDestroyed()) win.webContents.send("remote-command", cmd);
-    });
+    socket.on("command", (cmd) => sendToPage("remote-command", cmd));
+    socket.on("peers", (files) => sendToPage("remote-peers", files));
   }
 
   async function start() {

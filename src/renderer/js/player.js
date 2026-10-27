@@ -32,6 +32,8 @@ function preload() {
     loadVideo(slot, token);
   } else if (slot.kind === "sketch") {
     loadSketch(slot, token);
+  } else if (slot.kind === "text") {
+    loadText(slot, token);
   } else {
     loadImage(
       buildMediaUrl(filename),
@@ -97,7 +99,7 @@ async function prepareVideo(slot, token) {
 
   if (isFullPlayback(slot.filename)) {
     // The only file of a full playlist restarts seamlessly by itself instead of being reloaded
-    slot.loops = loop = Playlist.files.length <= 1;
+    slot.loops = loop = Playlist.files.length <= 1 && !Playlist.hold;
   } else {
     segment = getFlags(slot.filename).duration ?? random(Config.VIDEO_SEGMENT_TIME.min, Config.VIDEO_SEGMENT_TIME.max);
     if (segment > duration) {
@@ -151,7 +153,7 @@ function handleLoadFailed(slot, token) {
 }
 
 function disposeMedia(slot) {
-  if (!slot || slot.kind === "image" || !slot.media) return; // images need no cleanup
+  if (!slot || slot.kind === "image" || slot.kind === "text" || !slot.media) return; // images need no cleanup
   try {
     slot.media.remove(); // video: detaches the element; sketch: removes the p5 instance
   } catch (error) {
@@ -198,6 +200,8 @@ function advance() {
 
   if (Player.current.kind === "video") {
     playVideo(Player.current);
+  } else if (Player.current.kind === "text") {
+    Player.current.startedAt = millis(); // text.js moves on when the page has been shown to its end
   } else if (!isFullPlayback(Player.current.filename)) {
     // Images and sketches. "full" playlists show them indefinitely; the user has to move on manually.
     const flagged = getFlags(Player.current.filename).duration;
@@ -247,6 +251,8 @@ function playVideo(slot) {
   el.play().catch((error) => console.warn("play() failed:", error));
 
   if (slot.loops) return; // loops forever, nothing to advance to
+
+  if (Playlist.hold) return; // stays on the last frame until next is called
 
   if (isFullPlayback(slot.filename)) {
     // Full video: go on when it has really ended (a timer alone drifts from the playback
