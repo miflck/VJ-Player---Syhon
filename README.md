@@ -66,6 +66,7 @@ assets folder automatically (see below), and start playing.
 │           ├── sketches.js   p5 sketch files as media
 │           ├── player.js     Media loading, playback, transitions
 │           ├── words.js      Word list text layer
+│           ├── text.js       Text pages (.txt files on a coloured background)
 │           ├── ui.js         Canvas rendering
 │           ├── settings.js   Settings panel (assets folder, host/client)
 │           ├── syphon.js     Syphon output (macOS, key "Y")
@@ -111,14 +112,16 @@ doesn't exist yet).
 
 ### Weighting random picks
 
-A file is never picked twice in a row (unless it is the only one in the
-playlist). Within a playlist, add `@w<number>` to a filename to make it show up more
-or less often than the default weight of `1`:
+Random playlists work in rounds, like a shuffled deck: every file comes once, in random
+order, before the list is shuffled again and the next round starts. A file is not played twice
+in a row (unless it is the only one). Add `@w<number>` to a filename to make it come up
+more or less often: the number is how many times the file is in each round (`@w3` = three
+times, `@w0.2` = in one round out of five). The default is `1`:
 
 ```
 clip1.mp4          → weight 1 (default)
-clip2@w5.mp4       → weight 5   (5× more likely to be picked)
-clip3@w0.2.mp4     → weight 0.2 (rarely picked)
+clip2@w5.mp4       → weight 5   (5 times per round)
+clip3@w0.2.mp4     → weight 0.2 (in about one round out of five)
 ```
 
 ### Playing files in order
@@ -132,6 +135,13 @@ Sequential implies `"full"`: every video plays from start to end.
 ```
 
 `→` skips to the next file in the order; re-selecting the playlist starts at the first.
+
+Use `"hold": true` instead (implies `"sequential"`) to have each video stop on its
+last frame when it ends. The next file only starts when you call next (`→`).
+
+```json
+{ "name": "datadesignandart", "folder": "datadesignandart", "hold": true }
+```
 
 ### Custom clip duration
 
@@ -236,6 +246,26 @@ Welcome to the Infotage
   changes.
 - Word lists also work in an explicit `files` list. A playlist still needs at
   least one media file.
+
+### Text pages
+
+Any `.txt` file in a playlist folder (except `words.txt` / `*.words.txt`) is shown as a
+text page: the text runs left-aligned, ragged-right over the whole canvas, on a coloured
+background. It is picked, weighted and masked like any other file, and it is part of the
+Syphon output. Line breaks and blank lines in the file are kept; long lines are wrapped.
+
+- If the text is taller than the canvas it stands still for a moment, then scrolls slowly
+  up until the last line is on screen, and stands still again. The next file only comes
+  after that, so the text is always shown to its end. Text that fits stays for a few seconds.
+- Look and speed are in `Config` (`TEXT_*`) in `config.js`: `TEXT_SIZE` (font size as a
+  fraction of the output height), `TEXT_LEADING`, `TEXT_MARGIN`, `TEXT_COLOR`,
+  `TEXT_BACKGROUNDS` (palette, one picked at random per page), `TEXT_SCROLL_SPEED`,
+  `TEXT_SCROLL_PAUSE` and `TEXT_DISPLAY_TIME` (text that needs no scrolling). The font is
+  `WORD_FONT_FILE`.
+- Background per file: `story@bg2.txt` uses the 2nd entry of `TEXT_BACKGROUNDS`,
+  `story@bgff00ff.txt` a hex colour. `@15s` sets how long text without scrolling stays;
+  `@w` weights it.
+- The text file is read when the playlists load; press `L` to pick up edits.
 
 ### Sketches
 
@@ -348,7 +378,7 @@ controller ◀──players── hub ◀───state─── every player
 A command is `{ "key": "n" }` (same as pressing that key) or
 `{ "playlist": 2 }` (jump to that playlist). Add `"target": "<player id>"` (the
 `id` from the `players` list) to address a single player instead of all of
-them. Allowed keys: `n x → a m l f y`.
+them. Allowed keys: `n x → a b c d m l f y`.
 `E`, `S`, `Esc` and `Backspace` can't be sent remotely. Any socket.io client
 can act as a controller, e.g. from another app:
 
@@ -527,11 +557,14 @@ which has no player to start them from.
 | `→` (Right) | Skip to another random file in this playlist            |
 | `A`         | Toggle blackout (hide output without stopping playback) |
 | `B`         | Toggle random blackouts (also a button in the controller; timing: `BLACKOUT_GAP` / `BLACKOUT_HOLD` in `config.js`) |
+| `C`         | Toggle a flat colour over the output, picked at random from `WORD_COLORS` (or `COLOR_FILL_COLORS` in `config.js`) |
+| `D`         | Toggle random colours: now and then the output turns one flat colour for a while (timing: `COLOR_GAP` / `COLOR_HOLD` in `config.js`) |
 | `M`         | Toggle circle mask (see below)                          |
 | `L`         | Reload `playlists.json` (pick up edits live)            |
 | `E`         | Open `playlists.json` in your default editor            |
 | `F`         | Toggle fullscreen                                       |
 | `Y`         | Toggle Syphon output (macOS)                            |
+| `R`         | Shuffle all: random files from every playlist, on / off |
 | `Backspace` | Reload the app                                          |
 
 ## Building a distributable app

@@ -3,14 +3,20 @@
 //
 // A command is { key: "n" } (same as pressing that key) or { playlist: 2 }.
 
-const REMOTE_KEYS = new Set(["n", "x", "arrowright", "a", "b", "m", "l", "f", "y"]); // never e, s, escape, backspace
+const REMOTE_KEYS = new Set(["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", "y", "r"]); // never e, s, escape, backspace
 
 let lastRemoteState = "";
+const RemotePeers = new Set(); // files the other players show or have ready (from the hub); empty without a hub
+
 
 function initRemote() {
   if (!window.electronAPI.onRemoteCommand) return;
 
   window.electronAPI.onRemoteCommand(handleRemoteCommand);
+  window.electronAPI.onRemotePeers((files) => {
+    RemotePeers.clear();
+    if (Array.isArray(files)) files.forEach((f) => typeof f === "string" && RemotePeers.add(f));
+  });
   setInterval(publishRemoteState, 1000);
 }
 
@@ -33,9 +39,13 @@ function publishRemoteState() {
   const state = JSON.stringify({
     playlists: Playlist.order,
     playlist: Playlist.index,
+    shuffleAll: Playlist.shuffleAll,
     file: Player.current ? Player.current.filename : null,
+    next: Player.next ? Player.next.filename : null,
     kind: Player.current ? Player.current.kind : null,
     blackout: App.isBlackedOut,
+    colorFill: !!App.colorFill,
+    randomColors: App.randomColors,
     randomBlackouts: App.randomBlackouts,
     mask: App.isMasked,
     syphon: SyphonOut.enabled,

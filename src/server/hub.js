@@ -4,6 +4,7 @@
 //
 //   controller --"command"--> hub --"command"--> every player
 //   player     --"state"----> hub --"players"--> every controller
+//                                 hub --"peers"----> every player (files the other players show)
 //
 // Clients say what they are in the handshake: auth: { role: "player" | "controller", name, token }.
 // Anything that isn't a player is a controller.
@@ -14,7 +15,7 @@ const path = require("path");
 const { Server } = require("socket.io");
 
 // Keys a controller may press. They are the same keys as on the keyboard; players check this list again.
-const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "m", "l", "f", "y"];
+const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", "y", "r"];
 
 // Returns a clean command, or null if it is not allowed.
 //   { key: "n" }      press a key
@@ -61,7 +62,14 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
     io.use((socket, next) => (socket.handshake.auth?.token === token ? next() : next(new Error("unauthorized"))));
   }
 
-  const sendPlayers = () => io.to("controllers").emit("players", [...players.values()]);
+  const sendPlayers = () => {
+    io.to("controllers").emit("players", [...players.values()]);
+    // each player also hears which files the *other* players show or have ready, so it can pick something else
+    for (const id of players.keys()) {
+      const files = [...players.values()].filter((p) => p.id !== id).flatMap((p) => [p.file, p.next]);
+      io.to(id).emit("peers", files.filter((f) => typeof f === "string" && f));
+    }
+  };
 
   io.on("connection", (socket) => {
     const auth = socket.handshake.auth || {};

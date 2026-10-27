@@ -93,6 +93,9 @@
       <button data-key="x" disabled>◀ Previous <small>X</small></button>
       <button data-key="n" disabled>Next ▶ <small>N</small></button>
     </div>
+    <div class="row" style="margin-top: var(--gap)">
+      <button class="toggle" id="t-shuffle" data-key="r" disabled>Shuffle all <small>R · random files from every playlist</small></button>
+    </div>
     <div class="chips" id="chips" style="margin-top: var(--gap)"></div>
     <div class="row" style="margin-top: var(--gap)">
       <button id="spread" disabled>Spread playlists <small>player 1 → playlist 1, player 2 → playlist 2 …</small></button>
@@ -107,6 +110,8 @@
       <button class="toggle" id="t-mask" data-key="m" disabled>Circle <small>M</small></button>
       <button class="toggle" id="t-syphon" data-key="y" disabled>Syphon <small>Y</small></button>
       <button class="toggle" id="t-random" data-key="b" disabled>Random blackouts <small>B</small></button>
+      <button class="toggle" id="t-color" data-key="c" disabled>Colour <small>C</small></button>
+      <button class="toggle" id="t-randcolor" data-key="d" disabled>Random colours <small>D</small></button>
       <button data-key="f" disabled>Fullscreen <small>F</small></button>
       <button data-key="l" disabled>Reload <small>L</small></button>
     </div>
@@ -179,13 +184,16 @@
     box.append(el("div", "file", (p.playlists ? `${p.playlists[p.playlist] ?? ""} · ` : "") + (p.file ? `${p.kind}: ${p.file}` : "nothing playing")));
 
     box.append(commandButton("Next media", { key: "arrowright" }, p.id));
+    const shuffle = commandButton("Shuffle all", { key: "r" }, p.id, "toggle");
+    shuffle.classList.toggle("active", !!p.shuffleAll);
+    box.append(shuffle);
 
     const nav = el("div", "row");
     nav.append(commandButton("◀ Previous", { key: "x" }, p.id), commandButton("Next ▶", { key: "n" }, p.id));
     box.append(nav, playlistChips(p, p.id));
 
     const out = el("div", "row three");
-    for (const [label, key, on] of [["Blackout", "a", p.blackout], ["Circle", "m", p.mask], ["Syphon", "y", p.syphon], ["Random blackouts", "b", p.randomBlackouts]]) {
+    for (const [label, key, on] of [["Blackout", "a", p.blackout], ["Circle", "m", p.mask], ["Syphon", "y", p.syphon], ["Random blackouts", "b", p.randomBlackouts], ["Colour", "c", p.colorFill], ["Random colours", "d", p.randomColors]]) {
       const b = commandButton(label, { key }, p.id, "toggle");
       b.classList.toggle("active", !!on);
       out.append(b);
@@ -208,7 +216,10 @@
     $("t-blackout").classList.toggle("active", !!lead.blackout);
     $("t-mask").classList.toggle("active", !!lead.mask);
     $("t-syphon").classList.toggle("active", !!lead.syphon);
+    $("t-shuffle").classList.toggle("active", !!lead.shuffleAll);
     $("t-random").classList.toggle("active", !!lead.randomBlackouts);
+    $("t-color").classList.toggle("active", !!lead.colorFill);
+    $("t-randcolor").classList.toggle("active", !!lead.randomColors);
 
     const chips = $("chips");
     chips.replaceChildren(...(lead.playlists || []).map((name, index) => {

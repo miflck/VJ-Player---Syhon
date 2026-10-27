@@ -7,6 +7,7 @@
 //   player.js   media loading, playback, transitions
 //   sketches.js p5 sketch files as media
 //   words.js    word list text layer
+//   text.js     text pages (.txt files) on a coloured background
 //   ui.js       canvas rendering
 //   settings.js settings panel (HTML)
 //   syphon.js   Syphon output (macOS)
@@ -56,25 +57,71 @@ function toggleRandomBlackouts() {
   invalidate();
 }
 
+// Random colours: while enabled, the output flashes a random flat colour now and then, for a random time.
+function updateRandomColors() {
+  if (!App.randomColors) {
+    if (App.randomColor) {
+      App.randomColor = null;
+      invalidate();
+    }
+    return;
+  }
+  const now = millis();
+  if (now < App.colorNextAt) return;
+
+  App.randomColor = App.randomColor ? null : pickColor();
+  const range = App.randomColor ? Config.COLOR_HOLD : Config.COLOR_GAP;
+  App.colorNextAt = now + random(range.min, range.max) * 1000;
+  invalidate();
+}
+
+function toggleRandomColors() {
+  App.randomColors = !App.randomColors;
+  App.randomColor = null;
+  App.colorNextAt = millis() + random(Config.COLOR_GAP.min, Config.COLOR_GAP.max) * 1000;
+  invalidate();
+}
+
+// A colour from the palette, never the same twice in a row
+function pickColor() {
+  const palette = Config.COLOR_FILL_COLORS || Config.WORD_COLORS;
+  const options = palette.length > 1 ? palette.filter((c) => c !== lastColorFill) : palette;
+  return (lastColorFill = options[Math.floor(random(options.length))]);
+}
+
+// "C": cover the output with one colour picked at random from the palette (never the same twice in a row); again = off
+function toggleColorFill() {
+  if (App.colorFill) {
+    App.colorFill = null;
+    return;
+  }
+  App.colorFill = pickColor();
+}
+let lastColorFill = null;
+
 function draw() {
   const current = Player.current;
   updateWords();
+  updateText();
   updateBlackouts();
+  updateRandomColors();
   const dark = App.isBlackedOut || App.randomDark;
-  const isAnimated = (current && current.kind !== "image" && !dark) || (Words.text && !dark); // video, sketch or visible word
+  const flat = App.colorFill || App.randomColor; // flat colour over the output, if any
+  const covered = dark || !!flat; // media and words are hidden
+  const isAnimated = (current && current.kind !== "image" && !covered) || (Words.text && !covered); // video, sketch or visible word
   if (!isAnimated && !App.needsRedraw) {
     publishSyphon(false); // nothing changed on a still screen
     return;
   }
   App.needsRedraw = false;
 
-  background(0);
+  background(dark ? 0 : flat || 0);
 
-  if (current && !dark) {
+  if (current && !covered) {
     if (current.kind === "sketch") stepSketch(current);
     renderMedia(current);
   }
-  if (!dark) renderWords();
+  if (!covered) renderWords();
 
   publishSyphon(true);
 }
@@ -119,7 +166,10 @@ const KEY_ACTIONS = {
   x: () => switchPlaylist(-1),
   arrowright: advance, // skip to another random file within the playlist
   a: () => (App.isBlackedOut = !App.isBlackedOut), // hides output without stopping playback
+  r: toggleShuffleAll, // random files from all playlists on/off
   b: toggleRandomBlackouts, // random blackouts on/off
+  c: toggleColorFill, // flat random colour on/off
+  d: toggleRandomColors, // random colour flashes on/off
   m: () => (App.isMasked = !App.isMasked), // circle mask
   l: reloadPlaylists, // re-read playlists.json
   e: () => window.electronAPI.openPlaylistsConfig(), // open playlists.json in the default editor
