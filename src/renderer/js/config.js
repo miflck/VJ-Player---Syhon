@@ -45,6 +45,7 @@ const Config = {
   COLOR_GAP: { min: 10, max: 40 }, // random colours ("D"): picture on
   COLOR_HOLD: { min: 1, max: 6 }, // random colours: colour shown
   COLOR_FILL_COLORS: null, // palette for the colour button ("C"); null = WORD_COLORS
+  RECORD_SECONDS: 15, // length of a recording ("V")
   PRELOAD_RETRY_LIMIT: 5,
   PRELOAD_RETRY_DELAY: 250, // ms
 };

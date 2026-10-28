@@ -109,7 +109,7 @@ function draw() {
   const flat = App.colorFill || App.randomColor; // flat colour over the output, if any
   const covered = dark || !!flat; // media and words are hidden
   const isAnimated = (current && current.kind !== "image" && !covered) || (Words.text && !covered); // video, sketch or visible word
-  if (!isAnimated && !App.needsRedraw) {
+  if (!isAnimated && !App.needsRedraw && !Recorder.active) {
     publishSyphon(false); // nothing changed on a still screen
     return;
   }
@@ -174,6 +174,7 @@ const KEY_ACTIONS = {
   l: reloadPlaylists, // re-read playlists.json
   e: () => window.electronAPI.openPlaylistsConfig(), // open playlists.json in the default editor
   f: () => window.electronAPI.toggleFullscreen(),
+  v: toggleRecording, // record the output (Config.RECORD_SECONDS) and save it as MP4
   y: toggleSyphon, // Syphon output on/off
   backspace: () => window.location.reload(),
 };

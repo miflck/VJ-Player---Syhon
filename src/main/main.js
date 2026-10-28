@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, powerSaveBlocker } = require("electron");
 const { startRemote } = require("./remote");
 const { applyCommandLine } = require("./cli");
+const { registerRecording } = require("./recording");
 const path = require("path");
 const fs = require("fs").promises;
 const fsSync = require("fs");
@@ -531,6 +532,8 @@ ipcMain.handle("set-output-size", (_event, { width, height }) => {
   return { ok: true };
 });
 ipcMain.on("get-instance-info-sync", (event) => (event.returnValue = instanceInfo())); // the page needs the output size before it starts
+
+registerRecording();
 
 ipcMain.handle("quit-app", () => {
   app.quit();

@@ -67,6 +67,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onRemoteCommand: (callback) => ipcRenderer.on("remote-command", (_event, command) => callback(command)),
   onRemotePeers: (callback) => ipcRenderer.on("remote-peers", (_event, files) => callback(files)),
   sendRemoteState: (state) => ipcRenderer.send("remote-state", state),
+  saveRecording: (bytes) => ipcRenderer.invoke("save-recording", bytes),
   openPlaylistsConfig: () => ipcRenderer.invoke("open-playlists-config"),
   syphonStart: syphon.start,
   syphonStop: syphon.stop,

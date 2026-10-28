@@ -332,6 +332,17 @@ This applies on top of whatever's currently playing, live — it doesn't
 change per-file, and combines with blackout (`A`) if you want to fade
 between a full circle and nothing.
 
+## Recording teasers (portrait, for Instagram)
+
+Start a separate instance with a portrait output and press `V`: it records the
+output for 15 seconds (`RECORD_SECONDS` in `config.js`) and saves an MP4 (H.264,
+30 fps, no sound) to `~/Movies/VJ Player`. The window title shows the progress.
+The MP4 conversion needs `ffmpeg` (`brew install ffmpeg`); without it the WebM is kept.
+
+```bash
+npm start -- --instance=social --output=1080x1920
+```
+
 ## Syphon output (macOS)
 
 Press `Y` to publish the canvas — exactly what you see, including the circle
@@ -564,6 +575,7 @@ which has no player to start them from.
 | `E`         | Open `playlists.json` in your default editor            |
 | `F`         | Toggle fullscreen                                       |
 | `Y`         | Toggle Syphon output (macOS)                            |
+| `V`         | Record the output (15 s, saved as MP4 in ~/Movies/VJ Player) |
 | `R`         | Shuffle all: random files from every playlist, on / off |
 | `Backspace` | Reload the app                                          |
 
