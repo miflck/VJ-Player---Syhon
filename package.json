@@ -29,7 +29,7 @@
     "socket.io-client": "^4.8.4"
   },
   "build": {
-    "appId": "com.example.vjplayer",
+    "appId": "ch.michaelflueckiger.vjplayer",
     "productName": "VJ Player",
     "files": [
       "src/**/*",
@@ -38,11 +38,28 @@
       "package.json"
     ],
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "buildResources"
     },
     "mac": {
       "category": "public.app-category.entertainment",
-      "target": "dmg",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "identity": "Michael Flueckiger (FFUZS5J5U2)",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "buildResources/entitlements.mac.plist",
+      "entitlementsInherit": "buildResources/entitlements.mac.plist",
+      "notarize": false,
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "VJ Player connects to the controller and other players on the local network."
+      },
       "extraFiles": [
         {
           "from": "frameworks",
