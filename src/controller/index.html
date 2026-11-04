@@ -67,7 +67,7 @@
     .client button { background: var(--bg); min-height: 52px; }
     .client .chips button.current { background: var(--fg); }
     #clients { display: flex; flex-direction: column; gap: 20px; }
-    /* Tap the name to fold a player away; folded, only the name and what it plays stay. */
+    /* Players start folded (only the name and what it plays); tap the name to open one. */
     .client h2 { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); cursor: pointer; user-select: none; -webkit-user-select: none; }
     .client h2::after { content: "▾"; color: var(--muted); font-size: 16px; transition: transform 0.15s; }
     .client h2:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
@@ -176,16 +176,18 @@
     return chips;
   }
 
-  // Folded players, by name (the socket id changes on every reconnect). Remembered in this browser.
-  const collapsed = new Set((() => {
-    try { return JSON.parse(localStorage.getItem("collapsedPlayers")) || []; } catch { return []; }
+  // Players start folded. The ones opened are kept by name (the socket id changes on every
+  // reconnect) and remembered in this browser.
+  const expanded = new Set((() => {
+    try { return JSON.parse(localStorage.getItem("expandedPlayers")) || []; } catch { return []; }
   })());
+  const isCollapsed = (name) => !expanded.has(name);
   function toggleCollapsed(name, box, head) {
-    if (collapsed.has(name)) collapsed.delete(name);
-    else collapsed.add(name);
-    box.classList.toggle("collapsed", collapsed.has(name));
-    head.setAttribute("aria-expanded", String(!collapsed.has(name)));
-    try { localStorage.setItem("collapsedPlayers", JSON.stringify([...collapsed])); } catch {}
+    if (expanded.has(name)) expanded.delete(name);
+    else expanded.add(name);
+    box.classList.toggle("collapsed", isCollapsed(name));
+    head.setAttribute("aria-expanded", String(!isCollapsed(name)));
+    try { localStorage.setItem("expandedPlayers", JSON.stringify([...expanded])); } catch {}
   }
 
   // The block for one connected player: its own media / playlist / output controls.
@@ -195,7 +197,7 @@
     const head = el("h2", "", name);
     head.tabIndex = 0;
     head.setAttribute("role", "button");
-    head.setAttribute("aria-expanded", String(!collapsed.has(name)));
+    head.setAttribute("aria-expanded", String(!isCollapsed(name)));
     head.addEventListener("click", () => toggleCollapsed(name, box, head));
     head.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" && e.key !== " ") return;
@@ -203,7 +205,7 @@
       e.stopPropagation(); // not a player key
       toggleCollapsed(name, box, head);
     });
-    box.classList.toggle("collapsed", collapsed.has(name));
+    box.classList.toggle("collapsed", isCollapsed(name));
     box.append(head);
     box.append(el("div", "file", (p.playlists ? `${p.playlists[p.playlist] ?? ""} · ` : "") + (p.file ? `${p.kind}: ${p.file}` : "nothing playing")));
 
