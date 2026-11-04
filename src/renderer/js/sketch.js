@@ -107,8 +107,9 @@ function draw() {
   updateRandomColors();
   const dark = App.isBlackedOut || App.randomDark;
   const flat = App.colorFill || App.randomColor; // flat colour over the output, if any
-  const covered = dark || !!flat; // media and words are hidden
-  const isAnimated = (current && current.kind !== "image" && !covered) || (Words.text && !covered); // video, sketch or visible word
+  const covered = dark || !!flat; // the media is hidden (a flat colour keeps the words, drawn on top of it)
+  const showWords = App.wordsOn && !dark;
+  const isAnimated = (current && current.kind !== "image" && !covered) || (Words.text && showWords); // video, sketch or visible word
   if (!isAnimated && !App.needsRedraw) {
     publishSyphon(false); // nothing changed on a still screen
     return;
@@ -121,7 +122,11 @@ function draw() {
     if (current.kind === "sketch") stepSketch(current);
     renderMedia(current);
   }
-  if (!covered) renderWords();
+  if (showWords) {
+    // on a flat colour the word must not take that colour: pick another one from the palette
+    if (flat && Words.text && Words.color === flat) Words.color = Config.WORD_COLORS.find((c) => c !== flat) || Words.color;
+    renderWords();
+  }
 
   publishSyphon(true);
 }
@@ -170,6 +175,7 @@ const KEY_ACTIONS = {
   b: toggleRandomBlackouts, // random blackouts on/off
   c: toggleColorFill, // flat random colour on/off
   d: toggleRandomColors, // random colour flashes on/off
+  k: () => (App.wordsOn = !App.wordsOn), // keywords (word layer) on / off
   m: () => (App.isMasked = !App.isMasked), // circle mask
   l: reloadPlaylists, // re-read playlists.json
   e: () => window.electronAPI.openPlaylistsConfig(), // open playlists.json in the default editor

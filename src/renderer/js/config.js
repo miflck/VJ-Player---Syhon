@@ -58,6 +58,7 @@ const App = {
   randomColors: false, // "D" toggles this — now and then the output turns one flat colour for a while
   randomColor: null, // the colour on screen right now during such a flash (null = picture visible)
   colorNextAt: 0, // millis() of the next switch between flash and picture
+  wordsOn: true, // "K" toggles this — the word layer (keywords) is drawn; off = never rendered
   randomBlackouts: false, // "B" toggles this — the output goes dark now and then, at random
   randomDark: false, // true while such a random blackout is on
   blackoutNextAt: 0, // millis() of the next switch between dark and visible

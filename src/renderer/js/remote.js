@@ -3,7 +3,7 @@
 //
 // A command is { key: "n" } (same as pressing that key) or { playlist: 2 }.
 
-const REMOTE_KEYS = new Set(["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", "y", "r"]); // never e, s, escape, backspace
+const REMOTE_KEYS = new Set(["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", "y", "r", "k"]); // never e, s, escape, backspace
 
 let lastRemoteState = "";
 const RemotePeers = new Set(); // files the other players show or have ready (from the hub); empty without a hub
@@ -53,6 +53,7 @@ function publishRemoteState() {
     randomColors: App.randomColors,
     randomBlackouts: App.randomBlackouts,
     mask: App.isMasked,
+    wordsOn: App.wordsOn,
     syphon: SyphonOut.enabled,
   });
   if (state === lastRemoteState) return;

@@ -15,7 +15,7 @@ const path = require("path");
 const { Server } = require("socket.io");
 
 // Keys a controller may press. They are the same keys as on the keyboard; players check this list again.
-const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", "y", "r"];
+const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", "y", "r", "k"];
 
 // Returns a clean command, or null if it is not allowed.
 //   { key: "n" }      press a key

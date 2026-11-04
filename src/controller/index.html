@@ -119,6 +119,7 @@
       <button class="toggle" id="t-blackout" data-key="a" disabled>Blackout <small>A</small></button>
       <button class="toggle" id="t-mask" data-key="m" disabled>Circle <small>M</small></button>
       <button class="toggle" id="t-syphon" data-key="y" disabled>Syphon <small>Y</small></button>
+      <button class="toggle" id="t-words" data-key="k" disabled>Keywords <small>K</small></button>
       <button class="toggle" id="t-random" data-key="b" disabled>Random blackouts <small>B</small></button>
       <button class="toggle" id="t-color" data-key="c" disabled>Colour <small>C</small></button>
       <button class="toggle" id="t-randcolor" data-key="d" disabled>Random colours <small>D</small></button>
@@ -235,7 +236,7 @@
     if ((p.scenes || []).length) box.append(sceneChips(p, p.id));
 
     const out = el("div", "row three");
-    for (const [label, key, on] of [["Blackout", "a", p.blackout], ["Circle", "m", p.mask], ["Syphon", "y", p.syphon], ["Random blackouts", "b", p.randomBlackouts], ["Colour", "c", p.colorFill], ["Random colours", "d", p.randomColors]]) {
+    for (const [label, key, on] of [["Blackout", "a", p.blackout], ["Circle", "m", p.mask], ["Syphon", "y", p.syphon], ["Keywords", "k", p.wordsOn], ["Random blackouts", "b", p.randomBlackouts], ["Colour", "c", p.colorFill], ["Random colours", "d", p.randomColors]]) {
       const b = commandButton(label, { key }, p.id, "toggle");
       b.classList.toggle("active", !!on);
       out.append(b);
@@ -257,6 +258,7 @@
     $("t-blackout").classList.toggle("active", !!lead.blackout);
     $("t-mask").classList.toggle("active", !!lead.mask);
     $("t-syphon").classList.toggle("active", !!lead.syphon);
+    $("t-words").classList.toggle("active", !!lead.wordsOn);
     $("t-shuffle").classList.toggle("active", !!lead.shuffleAll);
     $("t-random").classList.toggle("active", !!lead.randomBlackouts);
     $("t-color").classList.toggle("active", !!lead.colorFill);

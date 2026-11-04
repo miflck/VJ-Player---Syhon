@@ -386,7 +386,7 @@ controller ◀──players── hub ◀───state─── every player
 A command is `{ "key": "n" }` (same as pressing that key) or
 `{ "playlist": 2 }` (jump to that playlist). Add `"target": "<player id>"` (the
 `id` from the `players` list) to address a single player instead of all of
-them. Allowed keys: `n x → a b c d m l f y`.
+them. Allowed keys: `n x → a b c d k m l f y r`.
 `E`, `S`, `Esc` and `Backspace` can't be sent remotely. Any socket.io client
 can act as a controller, e.g. from another app:
 
