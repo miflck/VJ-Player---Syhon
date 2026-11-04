@@ -20,6 +20,7 @@ const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", 
 // Returns a clean command, or null if it is not allowed.
 //   { key: "n" }      press a key
 //   { playlist: 2 }   jump to a playlist by index
+//   { scene: 2 }      toggle the scene that is playlist 2 (same as { playlist: 2 } on a scene playlist)
 // Either may carry "target": a player id (from the "players" list) to address only that
 // player; without it the command goes to every player.
 function sanitizeCommand(cmd) {
@@ -28,6 +29,7 @@ function sanitizeCommand(cmd) {
   let clean = null;
   if (typeof cmd.key === "string" && REMOTE_KEYS.includes(cmd.key.toLowerCase())) clean = { key: cmd.key.toLowerCase() };
   else if (Number.isInteger(cmd.playlist) && cmd.playlist >= 0) clean = { playlist: cmd.playlist };
+  else if (Number.isInteger(cmd.scene) && cmd.scene >= 0) clean = { scene: cmd.scene };
   if (!clean) return null;
 
   if (cmd.target !== undefined) {

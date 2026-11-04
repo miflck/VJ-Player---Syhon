@@ -8,6 +8,7 @@
     ]
   },
   { "name": "Space", "folder": "visuals/techbck" },
+  { "name": "WipeBlack", "folder": "sketches/wipe", "scene": true },
   { "name": "Intro", "files": ["visuals/intro.mp4"], "full": true },
   { "name": "Logo", "files": ["visuals/logo@contain.png"], "full": true },
   { "name": "Everything", "folder": "." }

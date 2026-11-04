@@ -27,6 +27,8 @@ function handleRemoteCommand(command) {
     KEY_ACTIONS[command.key]();
   } else if (Number.isInteger(command.playlist)) {
     gotoPlaylist(command.playlist);
+  } else if (Number.isInteger(command.scene)) {
+    gotoPlaylist(command.scene); // a scene is a playlist; same as picking its folder
   } else {
     return;
   }
@@ -39,6 +41,8 @@ function publishRemoteState() {
   const state = JSON.stringify({
     playlists: Playlist.order,
     playlist: Playlist.index,
+    scenes: sceneIndices(),
+    scene: App.scene,
     shuffleAll: Playlist.shuffleAll,
     file: Player.current ? Player.current.filename : null,
     next: Player.next ? Player.next.filename : null,

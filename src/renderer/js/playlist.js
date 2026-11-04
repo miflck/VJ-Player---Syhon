@@ -15,6 +15,7 @@ const Playlist = {
   seqIndex: 0, // next file to play when sequential
   hold: false, // true → sequential, but each video stops on its last frame until next is called
   shuffleAll: false, // true → one random pool made of the files of every playlist (see activateShuffleAll)
+  scene: false, // true → the active playlist is a scene (see syncScene)
   fullFiles: new Set(), // files that belong to a "full" playlist (only used while shuffleAll is on)
 };
 
@@ -47,6 +48,7 @@ function activatePlaylist(index) {
   Playlist.files = list.files || [];
   Playlist.texts = list.texts || {};
   Playlist.fullFiles = new Set();
+  Playlist.scene = !!list.scene;
   Playlist.hold = !!list.hold;
   Playlist.sequential = !!list.sequential || Playlist.hold;
   Playlist.full = !!list.full || Playlist.sequential;
@@ -67,6 +69,7 @@ function activateShuffleAll(index) {
   Playlist.files = [...new Set(lists.flatMap((l) => l.files || []))];
   Playlist.texts = Object.assign({}, ...lists.map((l) => l.texts || {}));
   Playlist.fullFiles = new Set(lists.filter((l) => l.full || l.sequential || l.hold).flatMap((l) => l.files || []));
+  Playlist.scene = false;
   Playlist.hold = false;
   Playlist.sequential = false;
   Playlist.full = false;
@@ -88,6 +91,7 @@ function toggleShuffleAll() {
 async function startPlaylists() {
   if (!(await loadPlaylists())) return;
   activatePlaylist(0);
+  syncScene();
   restartPlayback();
 }
 
@@ -98,6 +102,7 @@ async function reloadPlaylists() {
 
   const sameIndex = Playlist.order.indexOf(previousName);
   activatePlaylist(sameIndex >= 0 ? sameIndex : 0);
+  syncScene();
   restartPlayback();
 }
 
@@ -109,15 +114,54 @@ function switchPlaylist(direction) {
 
   Playlist.shuffleAll = false; // picking a playlist leaves shuffle all
   activatePlaylist((Playlist.index + direction + count) % count);
+  syncScene();
   restartPlayback();
 }
 
-// Jumps straight to the playlist with the given index.
+// Jumps straight to the playlist with the given index. For a scene playlist this is the same
+// as the scene button: clicking the active scene again leaves the scene (see syncScene).
 function gotoPlaylist(index) {
   if (!Number.isInteger(index) || index < 0 || index >= Playlist.order.length) return;
+  if (App.scene === index && Playlist.index === index) return leaveScene();
   Playlist.shuffleAll = false; // picking a playlist leaves shuffle all
   activatePlaylist(index);
+  syncScene();
   restartPlayback();
+}
+
+// Indices of the playlists marked "scene": true in playlists.json (for the controller's scene list).
+function sceneIndices() {
+  return Playlist.order.map((name, i) => (Playlist.lists[name] && Playlist.lists[name].scene ? i : -1)).filter((i) => i >= 0);
+}
+
+// Scenes: a playlist with "scene": true switches the random effects off (random colours, random
+// blackouts, flat colour) while it is the active playlist, so only the sketch/media shows. The
+// effects each player had are remembered and put back when the scene is left — by clicking the
+// scene again, or by moving to a playlist that is not a scene.
+function syncScene() {
+  if (Playlist.scene && !Playlist.shuffleAll) enterScene(Playlist.index);
+  else if (App.scene !== null) leaveScene();
+}
+
+function enterScene(index) {
+  if (App.scene === null) {
+    App.savedEffects = { randomColors: App.randomColors, randomBlackouts: App.randomBlackouts, colorFill: !!App.colorFill };
+  }
+  App.scene = index;
+  if (App.randomColors) toggleRandomColors();
+  if (App.randomBlackouts) toggleRandomBlackouts();
+  if (App.colorFill) toggleColorFill();
+}
+
+// Puts the remembered effects back. The player stays on the playlist.
+function leaveScene() {
+  const saved = App.savedEffects;
+  App.scene = null;
+  App.savedEffects = null;
+  if (!saved) return;
+  if (saved.randomColors !== App.randomColors) toggleRandomColors();
+  if (saved.randomBlackouts !== App.randomBlackouts) toggleRandomBlackouts();
+  if (saved.colorFill !== !!App.colorFill) toggleColorFill();
 }
 
 // Picks one file at random, biased by each file's @w weight flag.

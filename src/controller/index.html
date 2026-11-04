@@ -52,6 +52,8 @@
 
     .chips { display: flex; flex-wrap: wrap; gap: 8px; }
     .chips button { min-height: 44px; padding: 6px 14px; border-radius: 999px; font-size: 14px; flex-direction: row; }
+    [hidden] { display: none !important; }
+    .chips button.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); }
     .chips button.current { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 
     .players { display: flex; flex-direction: column; gap: 8px; }
@@ -103,6 +105,8 @@
       <button class="toggle" id="t-shuffle" data-key="r" disabled>Shuffle all <small>R · random files from every playlist</small></button>
     </div>
     <div class="chips" id="chips" style="margin-top: var(--gap)"></div>
+    <h2 id="scenes-h" style="margin-top: var(--gap)" hidden>Scenes <small>random effects off · tap again to leave</small></h2>
+    <div class="chips" id="scenes" hidden></div>
     <div class="row" style="margin-top: var(--gap)">
       <button id="spread" disabled>Spread playlists <small>player 1 → playlist 1, player 2 → playlist 2 …</small></button>
       <button id="spread-random" disabled>Random spread <small>a different playlist for every player</small></button>
@@ -166,6 +170,17 @@
     return b;
   }
 
+  // Buttons for the playlists that are scenes ("scene": true in playlists.json). Tapping the active one leaves it.
+  function sceneChips(player, target) {
+    const chips = el("div", "chips");
+    chips.append(...(player.scenes || []).map((index) => {
+      const chip = commandButton(player.playlists[index], { scene: index }, target);
+      chip.classList.toggle("active", index === player.scene);
+      return chip;
+    }));
+    return chips;
+  }
+
   function playlistChips(player, target) {
     const chips = el("div", "chips");
     chips.append(...(player.playlists || []).map((name, index) => {
@@ -217,6 +232,7 @@
     const nav = el("div", "row");
     nav.append(commandButton("◀ Previous", { key: "x" }, p.id), commandButton("Next ▶", { key: "n" }, p.id));
     box.append(nav, playlistChips(p, p.id));
+    if ((p.scenes || []).length) box.append(sceneChips(p, p.id));
 
     const out = el("div", "row three");
     for (const [label, key, on] of [["Blackout", "a", p.blackout], ["Circle", "m", p.mask], ["Syphon", "y", p.syphon], ["Random blackouts", "b", p.randomBlackouts], ["Colour", "c", p.colorFill], ["Random colours", "d", p.randomColors]]) {
@@ -253,6 +269,18 @@
       chip.disabled = !ready;
       chip.classList.toggle("current", index === lead.playlist);
       chip.addEventListener("click", () => send({ playlist: index }, chip));
+      return chip;
+    }));
+
+    const hasScenes = (lead.scenes || []).length > 0;
+    $("scenes-h").hidden = !hasScenes;
+    $("scenes").hidden = !hasScenes;
+    $("scenes").replaceChildren(...(lead.scenes || []).map((index) => {
+      const chip = document.createElement("button");
+      chip.textContent = lead.playlists[index];
+      chip.disabled = !ready;
+      chip.classList.toggle("active", index === lead.scene);
+      chip.addEventListener("click", () => send({ scene: index }, chip));
       return chip;
     }));
 

@@ -61,6 +61,8 @@ const App = {
   randomBlackouts: false, // "B" toggles this — the output goes dark now and then, at random
   randomDark: false, // true while such a random blackout is on
   blackoutNextAt: 0, // millis() of the next switch between dark and visible
+  scene: null, // playlist index of the active scene (null = not in a scene), see syncScene in playlist.js
+  savedEffects: null, // the random effects as they were before the scene, put back when it is left
   isMasked: false, // "M" toggles this — circular mask (r = height/2), media contained within it
   needsRedraw: true, // static images are only redrawn when something changed (see invalidate)
 };

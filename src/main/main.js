@@ -419,7 +419,7 @@ ipcMain.handle("get-media-files", async () => {
       if (files.length > 0) {
         const words = await readWords(assetsPath, [...new Set(wordFiles)]);
         const texts = await readTexts(assetsPath, files);
-        playlists[entry.name] = { files, texts, full: entry.full === true, sequential: entry.sequential === true || entry.hold === true, hold: entry.hold === true, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
+        playlists[entry.name] = { files, texts, full: entry.full === true, sequential: entry.sequential === true || entry.hold === true, hold: entry.hold === true, scene: entry.scene === true, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
         order.push(entry.name);
       } else {
         console.warn(`Playlist "${entry.name}" has no valid media files — skipping`);
