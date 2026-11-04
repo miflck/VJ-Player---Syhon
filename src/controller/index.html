@@ -303,12 +303,12 @@
   // Gives every player a different, random playlist. With more players than playlists, the
   // shuffle starts over, so playlists are repeated as little as possible.
   $("spread-random").addEventListener("click", (e) => {
-    const count = (players[0] && players[0].playlists || []).length;
-    if (!count) return;
+    const allowed = (players[0] && players[0].randomPool) || [...Array((players[0] && players[0].playlists || []).length).keys()];
+    if (!allowed.length) return;
     let pool = [];
     players.forEach((p) => {
       if (!pool.length) {
-        pool = [...Array(count).keys()];
+        pool = [...allowed];
         for (let i = pool.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [pool[i], pool[j]] = [pool[j], pool[i]];

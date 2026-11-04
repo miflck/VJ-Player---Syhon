@@ -103,6 +103,9 @@ either a `folder`, an explicit `files` list, or both:
   player remembers its own effects and puts them back when the scene is left — by tapping the
   scene again (in the controller's "Scenes" list or on the playlist button), or by moving to a
   playlist that is not a scene. The controller builds its "Scenes" list from these entries.
+- `excludeFromRandom` — optional boolean, default `false`. Set `"excludeFromRandom": true` to keep the playlist out of
+  "Shuffle all" (R) and the controller's "Random spread". It can still be picked by hand and used
+  by "Spread playlists". Scenes are always left out.
 - If both `folder` and `files` are given on one entry, they're combined.
 - If `playlists.json` doesn't exist yet, one is generated automatically:
   one playlist per top-level subfolder in your assets folder, or a single

@@ -300,6 +300,8 @@ function createWindow() {
     x: win.x,
     y: win.y,
     useContentSize: true,
+    roundedCorners: false, // square corners, so the half fullscreen has no rounded edges (frameless only)
+    enableLargerThanScreen: true, // lets macOS place the window over the menu bar instead of below it
     frame: win.frame === true, // no title bar by default; config.json "window": { "frame": true } brings it back
     title: instanceInfo().title,
     webPreferences: {
@@ -419,7 +421,7 @@ ipcMain.handle("get-media-files", async () => {
       if (files.length > 0) {
         const words = await readWords(assetsPath, [...new Set(wordFiles)]);
         const texts = await readTexts(assetsPath, files);
-        playlists[entry.name] = { files, texts, full: entry.full === true, sequential: entry.sequential === true || entry.hold === true, hold: entry.hold === true, scene: entry.scene === true, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
+        playlists[entry.name] = { files, texts, full: entry.full === true, sequential: entry.sequential === true || entry.hold === true, hold: entry.hold === true, scene: entry.scene === true, excludeFromRandom: entry.excludeFromRandom === true || entry.scene === true, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
         order.push(entry.name);
       } else {
         console.warn(`Playlist "${entry.name}" has no valid media files — skipping`);

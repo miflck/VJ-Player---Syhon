@@ -63,7 +63,7 @@ function activatePlaylist(index) {
 // "Shuffle all": the files, texts and words of every playlist form one pool that is played in random
 // order. Files of "full" playlists keep playing in full; sequential / hold are ignored.
 function activateShuffleAll(index) {
-  const lists = Playlist.order.map((name) => Playlist.lists[name] || {});
+  const lists = randomIndices().map((i) => Playlist.lists[Playlist.order[i]] || {});
   Playlist.index = index;
   Playlist.name = "Shuffle all";
   Playlist.files = [...new Set(lists.flatMap((l) => l.files || []))];
@@ -78,6 +78,14 @@ function activateShuffleAll(index) {
   Playlist.bag = [];
   setWords(lists.flatMap((l) => l.words || []));
   log(`Active playlist: shuffle all (${Playlist.files.length} file(s) from ${lists.length} playlist(s))`);
+}
+
+// Indices of the playlists that take part in "shuffle all" and "random spread": every playlist except
+// scenes and those with "excludeFromRandom": true in playlists.json. If that would leave none, all of them.
+function randomIndices() {
+  const all = Playlist.order.map((_, i) => i);
+  const picked = all.filter((i) => (Playlist.lists[Playlist.order[i]] || {}).excludeFromRandom !== true);
+  return picked.length ? picked : all;
 }
 
 // "R": shuffle all on / off. Off returns to the playlist that was selected before.

@@ -42,6 +42,7 @@ function publishRemoteState() {
     playlists: Playlist.order,
     playlist: Playlist.index,
     scenes: sceneIndices(),
+    randomPool: randomIndices(),
     scene: App.scene,
     shuffleAll: Playlist.shuffleAll,
     file: Player.current ? Player.current.filename : null,
