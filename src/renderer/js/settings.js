@@ -42,6 +42,8 @@ async function refreshSettings() {
   setRemoteMode(info.mode);
   if (document.activeElement !== byId("hub-url")) byId("hub-url").value = info.url || "";
   if (document.activeElement !== byId("hub-token")) byId("hub-token").value = info.token || "";
+  if (document.activeElement !== byId("player-name")) byId("player-name").value = info.name === info.defaultName ? "" : info.name;
+  byId("player-name").placeholder = info.defaultName;
   showRemoteStatus(info);
 }
 
@@ -61,7 +63,7 @@ function showRemoteStatus(info) {
   status.className = "status";
 
   const off = !info.enabled;
-  ["mode-host", "mode-client", "hub-url", "hub-token", "remote-apply"].forEach((id) => (byId(id).disabled = off));
+  ["mode-host", "mode-client", "player-name", "hub-url", "hub-token", "remote-apply"].forEach((id) => (byId(id).disabled = off));
   if (off) {
     status.textContent = 'Remote control is turned off ("enabled": false in config.json).';
     return;
@@ -93,7 +95,7 @@ async function applyRemoteSettings() {
   status.className = "status";
   status.textContent = "Applying…";
 
-  const result = await window.electronAPI.setRemoteSettings({ mode: remoteMode, url: byId("hub-url").value, token: byId("hub-token").value });
+  const result = await window.electronAPI.setRemoteSettings({ mode: remoteMode, url: byId("hub-url").value, token: byId("hub-token").value, name: byId("player-name").value });
   if (!result.ok) {
     status.className = "status error";
     status.textContent = result.error;
@@ -113,7 +115,7 @@ byId("mode-client").addEventListener("click", () => {
   byId("hub-url").focus();
 });
 byId("remote-apply").addEventListener("click", applyRemoteSettings);
-["hub-url", "hub-token"].forEach((id) =>
+["player-name", "hub-url", "hub-token"].forEach((id) =>
   byId(id).addEventListener("keydown", (event) => {
     if (event.key === "Enter") applyRemoteSettings();
   }),
@@ -139,4 +141,13 @@ byId("launch-instance").addEventListener("click", async () => {
   const result = await window.electronAPI.launchInstance();
   status.className = result.ok ? "status ok" : "status error";
   status.textContent = result.ok ? `Started ${result.name}.` : result.error;
+});
+
+// Opens the layout of players (default: 4 more next to this one, see DEFAULT_LAYOUT in main.js)
+byId("launch-layout").addEventListener("click", async () => {
+  const status = byId("launch-status");
+  if (!confirm("Open 4 more players (½ HD, HD, ½ HD, ½ HD)?")) return;
+  const result = await window.electronAPI.launchLayout();
+  status.className = result.ok ? "status ok" : "status error";
+  status.textContent = result.ok ? `Opening ${result.count} players…` : result.error;
 });

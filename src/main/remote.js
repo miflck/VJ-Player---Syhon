@@ -29,8 +29,11 @@ function lanUrls(port) {
 
 // saveRemote(partial): called when the settings screen changes host/url/token, to store it in config.json
 function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", saveRemote = () => {} }) {
-  const defaultName = instance ? `${os.hostname()} ${instance}` : os.hostname();
-  const settings = { enabled: true, host: true, port: 3000, url: "", token: "", name: defaultName, ...(userConfig.remote || {}) };
+  // "miflck-m2.local" → "miflck-m2", plus the instance: "miflck-m2 3"
+  const host = os.hostname().replace(/\.local$/i, "");
+  const defaultName = instance ? `${host} ${instance}` : host;
+  const settings = { enabled: true, host: true, port: 3000, url: "", token: "", ...(userConfig.remote || {}) };
+  if (!settings.name) settings.name = defaultName; // "" in config.json means the default
 
   const state = { hosting: false, connected: false, authError: false, urls: [], error: "" };
   let hub = null;
@@ -45,6 +48,7 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
     token: settings.token,
     port: settings.port,
     name: settings.name,
+    defaultName,
     ...state,
   });
 
@@ -64,7 +68,7 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
       state.connected = true;
       state.authError = false;
       console.log(`[remote] connected to ${hubUrl}`);
-      if (lastState) socket.emit("state", lastState);
+      if (lastState) socket.emit("state", { ...lastState, name: settings.name }); // the name may have changed
     });
     socket.on("disconnect", () => {
       state.connected = false;
@@ -123,7 +127,7 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
   ipcMain.handle("get-remote-info", () => snapshot());
 
   // { mode: "host", token } or { mode: "client", url: "http://192.168.1.20:3000", token }
-  // token is optional; when given (also ""), it replaces the stored one
+  // token and name are optional; when given (also ""), they replace the stored ones ("" name = default)
   ipcMain.handle("set-remote-settings", async (_event, request) => {
     if (!settings.enabled) return { ok: false, error: 'Remote control is turned off ("enabled": false in config.json).' };
 
@@ -138,7 +142,12 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
     settings.host = mode === "host";
     settings.url = mode === "client" ? url.replace(/\/+$/, "") : "";
     if (request && typeof request.token === "string") settings.token = request.token.trim();
-    saveRemote({ host: settings.host, url: settings.url, token: settings.token });
+    let savedName;
+    if (request && typeof request.name === "string") {
+      savedName = request.name.trim();
+      settings.name = savedName || defaultName;
+    }
+    saveRemote({ host: settings.host, url: settings.url, token: settings.token, ...(savedName !== undefined && { name: savedName }) });
     await start();
     return { ok: true, info: snapshot() };
   });

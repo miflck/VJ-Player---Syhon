@@ -347,7 +347,7 @@ app.whenReady().then(() => {
     launchLayout,
     userConfig: settings,
     instance,
-    // host/client chosen in the settings screen is remembered
+    // host/client, name and token chosen in the settings screen are remembered
     saveRemote: (remote) => {
       userConfig.remote = { ...userConfig.remote, ...remote };
       saveConfig();
@@ -507,7 +507,7 @@ function launchInstance(extraArgs = [], taken = []) {
 ipcMain.handle("launch-instance", () => launchInstance());
 
 // Layout of five players, left to right: two half HD, one HD, two half HD. The running player is
-// the first one, so the controller's "Open players" button starts the other four (instances 2 to 5).
+// the first one, so the "Open players" button in the settings starts the other four (instances 2 to 5).
 // Change the sizes with "layout" in config.json, e.g. ["960x1080", "1920x1080"].
 const DEFAULT_LAYOUT = ["960x1080", "960x1080", "1920x1080", "960x1080", "960x1080"];
 
@@ -521,6 +521,8 @@ function launchLayout() {
   }
   return { ok: true, count: layout.length - 1 };
 }
+
+ipcMain.handle("launch-layout", () => launchLayout());
 
 // Output size chosen in the settings screen: saved to config.json, used from the next start
 ipcMain.handle("set-output-size", (_event, { width, height }) => {

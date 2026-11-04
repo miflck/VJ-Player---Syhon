@@ -427,7 +427,9 @@ keys are optional:
   this app's own hub.
 - `token`: a shared secret. When set, controllers and players must send it; open
   the page as `http://…:3000/?token=secret`.
-- `name`: how this player is listed in the controller (default: the computer's name).
+- `name`: how this player is listed in the controller (default: the computer's name
+  without `.local`, plus the instance number). Also set in the settings screen under
+  **Player name**; leave it empty for the default.
 
 **Examples.** Copy one into the userData folder as `config.json` (or merge its
 `remote` part into your existing file) and restart the app:
@@ -537,16 +539,16 @@ Put the lines you use into a small shell script, one per setup. Values with spac
 need quotes, e.g. `--name="Right screen"`. There is no token option; for a shared
 network set `"token"` in `config.json` (see Remote control).
 
-### Opening a set of players from the controller
+### Opening a set of players
 
-The controller page has an **Open players** button (under "Layout"). The player that
+The settings screen (`S`) has an **Open players** button (under "More instances"). The player that
 hosts the hub counts as the first of five (two half HD, one HD, two half HD); the button
 starts the other four as instances 2 to 5, with output sizes 960×1080, 1920×1080,
 960×1080 and 960×1080. It asks for confirmation first. For the layout to match, start the
 first player with `--output=960x1080`. Change the sizes with
 `"layout": ["960x1080", "960x1080", "1920x1080", "960x1080", "960x1080"]` in `config.json`
-(the first entry is the running player). It does not work with a standalone `npm run hub`,
-which has no player to start them from.
+(the first entry is the running player). The players are started on the machine whose
+settings you use.
 
 ## Keyboard controls
 

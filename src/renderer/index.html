@@ -36,6 +36,7 @@
         <h2>More instances</h2>
         <p class="hint">Starts another copy with its own settings, window and Syphon name (VJ Player 2, 3, …).</p>
         <button id="launch-instance" type="button">Launch another instance</button>
+        <button id="launch-layout" type="button">Open players <span class="hint">½ HD · HD · ½ HD · ½ HD</span></button>
         <p id="launch-status" class="status"></p>
       </section>
 
@@ -46,6 +47,9 @@
           <button id="mode-client" type="button">Client</button>
         </div>
         <p id="mode-hint" class="hint"></p>
+        <label>Player name <span class="hint">(shown in the controller)</span>
+          <input id="player-name" type="text" spellcheck="false" autocomplete="off" autocapitalize="off">
+        </label>
         <label id="url-row">Hub address
           <input id="hub-url" type="text" placeholder="http://192.168.1.20:3000" spellcheck="false" autocomplete="off" autocapitalize="off">
         </label>
