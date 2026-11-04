@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, powerSaveBlocker } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, powerSaveBlocker, screen } = require("electron");
 const { startRemote } = require("./remote");
 const { applyCommandLine } = require("./cli");
 const path = require("path");
@@ -538,8 +538,51 @@ ipcMain.handle("quit-app", () => {
   app.quit();
 });
 
+// Fullscreen. A player whose output is much narrower than the display (e.g. the 960x1080 "half HD"
+// players on a 1920x1080 screen) fills only the left or right half of the display instead, so two
+// of them can sit side by side: a frameless window placed over the menu bar and the Dock, which
+// behaves like fullscreen. Which half is chosen by where the window is now. Wide players (e.g. HD)
+// use real fullscreen. config.json { "window": { "fullscreen": "half" | "full" } } overrides the choice.
+let halfFullscreenRestore = null; // window bounds from before the half fullscreen (null = not in it)
+
+function wantsHalfFullscreen(display) {
+  const mode = settings.window && settings.window.fullscreen;
+  if (mode === "half") return true;
+  if (mode === "full") return false;
+  const output = outputSize();
+  return output.width / output.height < (display.bounds.width / display.bounds.height) * 0.75;
+}
+
+function setHalfFullscreen(on) {
+  if (!on) {
+    mainWindow.setAlwaysOnTop(false);
+    mainWindow.setBounds(halfFullscreenRestore);
+    halfFullscreenRestore = null;
+    return;
+  }
+  const current = mainWindow.getBounds();
+  const display = screen.getDisplayMatching(current);
+  const d = display.bounds; // the whole display, not workArea: menu bar and Dock are covered
+  const left = current.x + current.width / 2 < d.x + d.width / 2;
+  const width = Math.round(d.width / 2);
+  halfFullscreenRestore = current;
+  mainWindow.setAlwaysOnTop(true, "screen-saver"); // above the menu bar and the Dock
+  mainWindow.setBounds({ x: left ? d.x : d.x + d.width - width, y: d.y, width, height: d.height });
+}
+
 ipcMain.handle("toggle-fullscreen", async () => {
-  const isFullscreen = mainWindow.isFullScreen();
-  mainWindow.setFullScreen(!isFullscreen);
-  return !isFullscreen;
+  if (halfFullscreenRestore) {
+    setHalfFullscreen(false);
+    return false;
+  }
+  if (mainWindow.isFullScreen()) {
+    mainWindow.setFullScreen(false);
+    return false;
+  }
+  if (wantsHalfFullscreen(screen.getDisplayMatching(mainWindow.getBounds()))) {
+    setHalfFullscreen(true);
+    return true;
+  }
+  mainWindow.setFullScreen(true);
+  return true;
 });

@@ -571,10 +571,19 @@ settings you use.
 | `M`         | Toggle circle mask (see below)                          |
 | `L`         | Reload `playlists.json` (pick up edits live)            |
 | `E`         | Open `playlists.json` in your default editor            |
-| `F`         | Toggle fullscreen                                       |
+| `F`         | Toggle fullscreen (half-width players fill half the screen, see below) |
 | `Y`         | Toggle Syphon output (macOS)                            |
 | `R`         | Shuffle all: random files from every playlist, on / off |
 | `Backspace` | Reload the app                                          |
+
+### Fullscreen for half-width players
+
+`F` on a player whose output is much narrower than the display (like the 960×1080 players on a
+1920×1080 screen) does not use macOS fullscreen. The frameless window instead fills the left or
+right half of the display (whichever half it is on now), covering the menu bar and the Dock, so
+two players can sit side by side. `F` again puts the window back where it was. Wide players (HD)
+use real fullscreen. To force one behaviour, set `"window": { "fullscreen": "half" }` or
+`"full"` in `config.json`. This needs the default frameless window (not `"frame": true`).
 
 ## Building a distributable app
 
