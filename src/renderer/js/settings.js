@@ -41,6 +41,7 @@ async function refreshSettings() {
   const info = await window.electronAPI.getRemoteInfo();
   setRemoteMode(info.mode);
   if (document.activeElement !== byId("hub-url")) byId("hub-url").value = info.url || "";
+  if (document.activeElement !== byId("hub-token")) byId("hub-token").value = info.token || "";
   showRemoteStatus(info);
 }
 
@@ -60,7 +61,7 @@ function showRemoteStatus(info) {
   status.className = "status";
 
   const off = !info.enabled;
-  ["mode-host", "mode-client", "hub-url", "remote-apply"].forEach((id) => (byId(id).disabled = off));
+  ["mode-host", "mode-client", "hub-url", "hub-token", "remote-apply"].forEach((id) => (byId(id).disabled = off));
   if (off) {
     status.textContent = 'Remote control is turned off ("enabled": false in config.json).';
     return;
@@ -81,7 +82,9 @@ function showRemoteStatus(info) {
     status.className = "status ok";
     status.textContent = `Connected to ${info.url}`;
   } else {
-    status.textContent = info.url ? `Not connected to ${info.url} (retrying)` : "No hub address set.";
+    status.textContent = info.url
+      ? `Not connected to ${info.url} (retrying)${info.authError ? " – wrong token?" : ""}`
+      : "No hub address set.";
   }
 }
 
@@ -90,7 +93,7 @@ async function applyRemoteSettings() {
   status.className = "status";
   status.textContent = "Applying…";
 
-  const result = await window.electronAPI.setRemoteSettings({ mode: remoteMode, url: byId("hub-url").value });
+  const result = await window.electronAPI.setRemoteSettings({ mode: remoteMode, url: byId("hub-url").value, token: byId("hub-token").value });
   if (!result.ok) {
     status.className = "status error";
     status.textContent = result.error;
@@ -110,9 +113,11 @@ byId("mode-client").addEventListener("click", () => {
   byId("hub-url").focus();
 });
 byId("remote-apply").addEventListener("click", applyRemoteSettings);
-byId("hub-url").addEventListener("keydown", (event) => {
-  if (event.key === "Enter") applyRemoteSettings();
-});
+["hub-url", "hub-token"].forEach((id) =>
+  byId(id).addEventListener("keydown", (event) => {
+    if (event.key === "Enter") applyRemoteSettings();
+  }),
+);
 
 async function applyOutputSize() {
   const status = byId("output-status");

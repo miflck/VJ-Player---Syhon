@@ -390,7 +390,9 @@ socket.emit("command", { key: "arrowright" });
 **Host or client.** Press `S` and use the **Host / Client** buttons under
 *Remote control*. *Host* runs the hub and the controller page in this app;
 *Client* connects to a hub elsewhere, so you type its address (e.g.
-`http://192.168.1.20:3000`) and click **Apply**. It switches immediately, no
+`http://192.168.1.20:3000`) and click **Apply**. The **Token** field sets the
+shared secret (as host: the token the hub requires; as client: the token sent to
+the hub); leave it empty for none. It switches immediately, no
 restart, and the choice is saved in `config.json`. The panel shows whether the hub
 is running or the connection is up. (The same can be set with `--host` /
 `--hub=<url>`, or by hand in `config.json`, see below.)

@@ -27,12 +27,12 @@ function lanUrls(port) {
     .map((net) => `http://${net.address}:${port}`);
 }
 
-// saveRemote(partial): called when the settings screen changes host/url, to store it in config.json
+// saveRemote(partial): called when the settings screen changes host/url/token, to store it in config.json
 function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", saveRemote = () => {} }) {
   const defaultName = instance ? `${os.hostname()} ${instance}` : os.hostname();
   const settings = { enabled: true, host: true, port: 3000, url: "", token: "", name: defaultName, ...(userConfig.remote || {}) };
 
-  const state = { hosting: false, connected: false, urls: [], error: "" };
+  const state = { hosting: false, connected: false, authError: false, urls: [], error: "" };
   let hub = null;
   let client = null;
   let lastState = null; // latest state of this player, resent after a reconnect
@@ -42,6 +42,7 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
     enabled: settings.enabled,
     mode: settings.host ? "host" : "client",
     url: settings.url,
+    token: settings.token,
     port: settings.port,
     name: settings.name,
     ...state,
@@ -61,6 +62,7 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
 
     socket.on("connect", () => {
       state.connected = true;
+      state.authError = false;
       console.log(`[remote] connected to ${hubUrl}`);
       if (lastState) socket.emit("state", lastState);
     });
@@ -70,6 +72,7 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
     });
     socket.on("connect_error", (error) => {
       state.connected = false;
+      state.authError = error.message === "unauthorized";
       console.warn(`[remote] cannot reach ${hubUrl}: ${error.message}`);
     });
 
@@ -108,7 +111,7 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
     client = null;
     if (hub) await hub.close();
     hub = null;
-    Object.assign(state, { hosting: false, connected: false, urls: [], error: "" });
+    Object.assign(state, { hosting: false, connected: false, authError: false, urls: [], error: "" });
   }
 
   // this player's page → hub
@@ -119,7 +122,8 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
 
   ipcMain.handle("get-remote-info", () => snapshot());
 
-  // { mode: "host" } or { mode: "client", url: "http://192.168.1.20:3000" }
+  // { mode: "host", token } or { mode: "client", url: "http://192.168.1.20:3000", token }
+  // token is optional; when given (also ""), it replaces the stored one
   ipcMain.handle("set-remote-settings", async (_event, request) => {
     if (!settings.enabled) return { ok: false, error: 'Remote control is turned off ("enabled": false in config.json).' };
 
@@ -133,7 +137,8 @@ function startRemote({ getWindow, launchLayout, userConfig = {}, instance = "", 
     await stop();
     settings.host = mode === "host";
     settings.url = mode === "client" ? url.replace(/\/+$/, "") : "";
-    saveRemote({ host: settings.host, url: settings.url });
+    if (request && typeof request.token === "string") settings.token = request.token.trim();
+    saveRemote({ host: settings.host, url: settings.url, token: settings.token });
     await start();
     return { ok: true, info: snapshot() };
   });
