@@ -167,6 +167,7 @@ async function saveTiming(timing, message) {
   const status = byId("timing-status");
   const result = await window.electronAPI.setTiming(timing);
   if (result.ok) {
+    savedTiming = timing;
     applyTiming(timing);
     fillTimingFields();
   }

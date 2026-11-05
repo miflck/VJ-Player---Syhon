@@ -75,6 +75,11 @@
     .client h2:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
     .client.collapsed h2::after { transform: rotate(-90deg); }
     .client.collapsed > :not(h2):not(.file) { display: none; }
+    #timing-box { margin-top: 0; }
+    #timing-box .trow { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); }
+    #timing-box .trow span { font-size: 15px; }
+    #timing-box .range { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+    #timing-box input { width: 72px; min-height: 44px; font: inherit; font-size: 16px; text-align: center; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
   </style>
 </head>
 <body>
@@ -125,6 +130,15 @@
       <button class="toggle" id="t-randcolor" data-key="d" disabled>Random colours <small>D</small></button>
       <button data-key="f" disabled>Fullscreen <small>F</small></button>
       <button data-key="l" disabled>Reload <small>L</small></button>
+    </div>
+  </section>
+
+  <section class="client collapsed" id="timing-box">
+    <h2 id="timing-head" tabindex="0" role="button">Timing <small>all players · seconds · not saved</small></h2>
+    <div id="timing-rows"></div>
+    <div class="row">
+      <button id="timing-apply" class="primary" disabled>Apply to all</button>
+      <button id="timing-reset" disabled>Back to saved</button>
     </div>
   </section>
 
@@ -206,6 +220,19 @@
     try { localStorage.setItem("expandedPlayers", JSON.stringify([...expanded])); } catch {}
   }
 
+  // Makes a heading fold / unfold its box (click, Enter or Space); the state is remembered under name.
+  function toggleHead(box, head, name) {
+    box.classList.toggle("collapsed", isCollapsed(name));
+    head.setAttribute("aria-expanded", String(!isCollapsed(name)));
+    head.addEventListener("click", () => toggleCollapsed(name, box, head));
+    head.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      e.stopPropagation(); // not a player key
+      toggleCollapsed(name, box, head);
+    });
+  }
+
   // The block for one connected player: its own media / playlist / output controls.
   function clientSection(p) {
     const name = p.name || "Player";
@@ -247,9 +274,43 @@
 
   function render() {
     const ready = connected && players.length > 0;
-    buttons.forEach((b) => (b.disabled = !ready));
+    // Timing for every player at once. Changes are live only; the settings screen of a player saves them.
+  const TIMING_ROWS = [["images", "Images"], ["videos", "Video segments"], ["texts", "Text pages"], ["wordHold", "Keywords shown"], ["wordGap", "Keywords pause"]];
+  let timingDirty = false; // the fields were edited and not applied yet: do not overwrite them with the players' values
+  $("timing-rows").replaceChildren(...TIMING_ROWS.map(([key, label]) => {
+    const row = el("div", "trow");
+    const range = el("div", "range");
+    for (const bound of ["min", "max"]) {
+      const input = el("input");
+      input.type = "number"; input.min = "0"; input.step = "0.5"; input.id = `tm-${key}-${bound}`; input.inputMode = "decimal";
+      input.addEventListener("input", () => (timingDirty = true));
+      range.append(input);
+      if (bound === "min") range.append(document.createTextNode("–"));
+    }
+    row.append(el("span", "", label), range);
+    return row;
+  }));
+  toggleHead($("timing-box"), $("timing-head"), "timing");
+  $("timing-apply").addEventListener("click", (e) => {
+    const timing = {};
+    for (const [key] of TIMING_ROWS) {
+      const min = parseFloat($(`tm-${key}-min`).value), max = parseFloat($(`tm-${key}-max`).value);
+      if (!(min >= 0) || !(max >= 0)) return setStatus("warn", "times must be numbers of 0 or more");
+      timing[key] = [Math.min(min, max), Math.max(min, max)];
+    }
+    timingDirty = false;
+    send({ timing }, e.currentTarget);
+  });
+  $("timing-reset").addEventListener("click", (e) => {
+    timingDirty = false;
+    send({ timing: "reset" }, e.currentTarget);
+  });
+
+  buttons.forEach((b) => (b.disabled = !ready));
     $("spread").disabled = !ready;
     $("spread-random").disabled = !ready;
+    $("timing-apply").disabled = !ready;
+    $("timing-reset").disabled = !ready;
     setStatus(!connected ? "" : ready ? "on" : "warn",
       !connected ? "connecting…" : ready ? `${players.length} player${players.length > 1 ? "s" : ""}` : "no player");
 
@@ -259,6 +320,14 @@
     $("t-mask").classList.toggle("active", !!lead.mask);
     $("t-syphon").classList.toggle("active", !!lead.syphon);
     $("t-words").classList.toggle("active", !!lead.wordsOn);
+    if (lead.timing && !timingDirty && !document.activeElement.closest("#timing-box")) {
+      for (const [key] of TIMING_ROWS) {
+        const range = lead.timing[key];
+        if (!range) continue;
+        $(`tm-${key}-min`).value = range[0];
+        $(`tm-${key}-max`).value = range[1];
+      }
+    }
     $("t-shuffle").classList.toggle("active", !!lead.shuffleAll);
     $("t-random").classList.toggle("active", !!lead.randomBlackouts);
     $("t-color").classList.toggle("active", !!lead.colorFill);

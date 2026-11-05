@@ -29,6 +29,9 @@ function handleRemoteCommand(command) {
     gotoPlaylist(command.playlist);
   } else if (Number.isInteger(command.scene)) {
     gotoPlaylist(command.scene); // a scene is a playlist; same as picking its folder
+  } else if (command.timing) {
+    // live change from the controller: not saved, the settings screen's values come back with "reset" or a restart
+    applyTiming(command.timing === "reset" ? savedTiming : { ...currentTiming(), ...command.timing });
   } else {
     return;
   }
@@ -54,6 +57,7 @@ function publishRemoteState() {
     randomBlackouts: App.randomBlackouts,
     mask: App.isMasked,
     wordsOn: App.wordsOn,
+    timing: currentTiming(),
     syphon: SyphonOut.enabled,
   });
   if (state === lastRemoteState) return;

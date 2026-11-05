@@ -20,6 +20,8 @@ const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", 
 // Returns a clean command, or null if it is not allowed.
 //   { key: "n" }      press a key
 //   { playlist: 2 }   jump to a playlist by index
+//   { timing: { images: [3, 8] } }   change times live (keys: images videos texts wordHold wordGap, [min, max] seconds);
+//                     { timing: "reset" } goes back to what is saved in the player's settings
 //   { scene: 2 }      toggle the scene that is playlist 2 (same as { playlist: 2 } on a scene playlist)
 // Either may carry "target": a player id (from the "players" list) to address only that
 // player; without it the command goes to every player.
@@ -30,6 +32,17 @@ function sanitizeCommand(cmd) {
   if (typeof cmd.key === "string" && REMOTE_KEYS.includes(cmd.key.toLowerCase())) clean = { key: cmd.key.toLowerCase() };
   else if (Number.isInteger(cmd.playlist) && cmd.playlist >= 0) clean = { playlist: cmd.playlist };
   else if (Number.isInteger(cmd.scene) && cmd.scene >= 0) clean = { scene: cmd.scene };
+  else if (cmd.timing === "reset") clean = { timing: "reset" };
+  else if (cmd.timing && typeof cmd.timing === "object") {
+    const timing = {};
+    for (const key of ["images", "videos", "texts", "wordHold", "wordGap"]) {
+      const r = cmd.timing[key];
+      if (r === undefined) continue;
+      if (!Array.isArray(r) || r.length !== 2 || !r.every((n) => typeof n === "number" && n >= 0 && n <= 3600)) return null;
+      timing[key] = [Math.min(...r), Math.max(...r)];
+    }
+    if (Object.keys(timing).length) clean = { timing };
+  }
   if (!clean) return null;
 
   if (cmd.target !== undefined) {

@@ -92,7 +92,13 @@ function applyTiming(timing = {}) {
   }
   if (typeof refreshWordOptions === "function") refreshWordOptions(); // words.js loads later
 }
-applyTiming(window.electronAPI.instance.timing);
+let savedTiming = window.electronAPI.instance.timing || {}; // what the settings screen saved; "reset" from the controller returns to it
+applyTiming(savedTiming);
+
+// The times in use right now, in the shape applyTiming and config.json use.
+function currentTiming() {
+  return Object.fromEntries(Object.entries(TIMING_TARGETS).map(([key, name]) => [key, [Config[name].min, Config[name].max]]));
+}
 
 // ----------------------------------------------------------------------------
 // Filename flags — parsed once per file and cached.
