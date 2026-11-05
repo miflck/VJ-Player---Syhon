@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // remote control (socket.io lives in the main process)
   launchInstance: () => ipcRenderer.invoke("launch-instance"),
   launchLayout: () => ipcRenderer.invoke("launch-layout"),
+  setTiming: (timing) => ipcRenderer.invoke("set-timing", timing),
   setOutputSize: (size) => ipcRenderer.invoke("set-output-size", size),
   getRemoteInfo: () => ipcRenderer.invoke("get-remote-info"),
   setRemoteSettings: (request) => ipcRenderer.invoke("set-remote-settings", request),

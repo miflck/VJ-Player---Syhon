@@ -10,6 +10,7 @@
 // "hold" and "gap" are [min, max] seconds (a single number means fixed). Anything left out uses Config.WORD_*.
 
 const Words = {
+  raw: null, // the playlist's own "words" options as written in playlists.json
   opts: null, // resolved timing of the active playlist, see resolveWordOptions
   list: [],
   text: null, // the word currently on screen (or fading), null during a pause
@@ -57,7 +58,13 @@ function resolveWordOptions(o = {}) {
   };
 }
 
+// Called when the settings change: the active playlist's words use the new defaults at once.
+function refreshWordOptions() {
+  if (Words.opts) Words.opts = resolveWordOptions(Words.raw);
+}
+
 function setWords(list, options) {
+  Words.raw = options;
   Words.opts = resolveWordOptions(options);
   Words.list = Array.isArray(list) ? list : [];
   Words.text = null;

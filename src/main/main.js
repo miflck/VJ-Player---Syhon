@@ -282,11 +282,38 @@ function outputSize() {
   return { width: out.width, height: out.height };
 }
 
+// Timing chosen in the settings screen (config.json "timing"): [min, max] seconds per kind.
+const TIMING_KEYS = ["images", "videos", "texts", "wordHold", "wordGap"];
+function toRange(value) {
+  if (typeof value === "number" && value >= 0) return [value, value];
+  if (Array.isArray(value) && value.length === 2 && value.every((n) => typeof n === "number" && n >= 0)) return [Math.min(...value), Math.max(...value)];
+  return null;
+}
+function timingSettings() {
+  const t = settings.timing && typeof settings.timing === "object" ? settings.timing : {};
+  const out = {};
+  for (const key of TIMING_KEYS) if (toRange(t[key])) out[key] = toRange(t[key]);
+  return out;
+}
+ipcMain.handle("set-timing", (_event, timing) => {
+  const out = {};
+  for (const key of TIMING_KEYS) {
+    if (timing[key] === null || timing[key] === undefined) continue; // left at the default
+    const range = toRange(timing[key]);
+    if (!range) return { ok: false, error: "Times must be numbers of 0 or more." };
+    out[key] = range;
+  }
+  userConfig.timing = out;
+  settings.timing = out;
+  saveConfig();
+  return { ok: true };
+});
+
 // Names that depend on the instance. Syphon and window title can be overridden in
 // config.json: { "syphon": { "name": "..." } }
 function instanceInfo() {
   const label = instance ? `VJ Player ${instance}` : "VJ Player";
-  return { instance, title: label, syphonName: (settings.syphon && settings.syphon.name) || label, output: outputSize() };
+  return { instance, title: label, syphonName: (settings.syphon && settings.syphon.name) || label, output: outputSize(), timing: timingSettings() };
 }
 
 function createWindow() {
@@ -421,7 +448,7 @@ ipcMain.handle("get-media-files", async () => {
       if (files.length > 0) {
         const words = await readWords(assetsPath, [...new Set(wordFiles)]);
         const texts = await readTexts(assetsPath, files);
-        playlists[entry.name] = { files, texts, full: entry.full === true, sequential: entry.sequential === true || entry.hold === true, hold: entry.hold === true, scene: entry.scene === true, excludeFromRandom: entry.excludeFromRandom === true || entry.scene === true, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
+        playlists[entry.name] = { files, texts, full: entry.full === true, sequential: entry.sequential === true || entry.hold === true, hold: entry.hold === true, scene: entry.scene === true, excludeFromRandom: entry.excludeFromRandom === true || entry.scene === true, timing: { images: toRange(entry.images && entry.images.time), videos: toRange(entry.videos && entry.videos.time) }, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
         order.push(entry.name);
       } else {
         console.warn(`Playlist "${entry.name}" has no valid media files — skipping`);

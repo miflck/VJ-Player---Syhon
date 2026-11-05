@@ -106,6 +106,10 @@ either a `folder`, an explicit `files` list, or both:
 - `excludeFromRandom` — optional boolean, default `false`. Set `"excludeFromRandom": true` to keep the playlist out of
   "Shuffle all" (R) and the controller's "Random spread". It can still be picked by hand and used
   by "Spread playlists". Scenes are always left out.
+- `images` / `videos` — optional, e.g. `"images": { "time": [3, 8] }`, `"videos": { "time": 10 }`. How
+  long a picture stays / how long the random part of a video lasts in this playlist, in seconds
+  (`[min, max]`, or one number for a fixed time). Not used by `full`, `sequential` and `hold` playlists
+  (videos play to the end) or by "Shuffle all".
 - If both `folder` and `files` are given on one entry, they're combined.
 - If `playlists.json` doesn't exist yet, one is generated automatically:
   one playlist per top-level subfolder in your assets folder, or a single
@@ -621,3 +625,13 @@ cross-platform build requirements.
 - Set `DEBUG = true` in `src/renderer/js/config.js` for verbose console logging.
 - The app remembers your last-selected assets folder between launches
   (stored in Electron's userData config, not in this project).
+
+
+## Timing
+
+Seconds for pictures, video segments, text pages and keywords (shown / pause) are set in the settings
+screen (`S` → Timing) and saved per player in `config.json` under `"timing"`
+(`{ "images": [2, 5], "videos": [2, 7], "texts": [8, 12], "wordHold": [1, 5], "wordGap": [2, 7] }`).
+Changes apply from the next picture, video or word. Priority, strongest first: file name flag
+(`@12s`, `@full`, `_x3`) → the playlist (`images`, `videos`, `words` in `playlists.json`) → the
+settings screen → the built-in defaults.

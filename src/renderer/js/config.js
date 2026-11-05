@@ -74,6 +74,26 @@ function invalidate() {
   App.needsRedraw = true;
 }
 
+// Timing from the settings screen (config.json "timing", [min, max] seconds). Priority, strongest first:
+// file name flag → playlist ("images" / "videos" / "words" in playlists.json) → settings → the values above.
+const TIMING_TARGETS = {
+  images: "IMAGE_DISPLAY_TIME",
+  videos: "VIDEO_SEGMENT_TIME",
+  texts: "TEXT_DISPLAY_TIME",
+  wordHold: "WORD_HOLD",
+  wordGap: "WORD_GAP",
+};
+const TIMING_DEFAULTS = Object.fromEntries(Object.entries(TIMING_TARGETS).map(([key, name]) => [key, { ...Config[name] }]));
+
+function applyTiming(timing = {}) {
+  for (const [key, name] of Object.entries(TIMING_TARGETS)) {
+    const range = timing[key];
+    Config[name] = Array.isArray(range) ? { min: range[0], max: range[1] } : { ...TIMING_DEFAULTS[key] };
+  }
+  if (typeof refreshWordOptions === "function") refreshWordOptions(); // words.js loads later
+}
+applyTiming(window.electronAPI.instance.timing);
+
 // ----------------------------------------------------------------------------
 // Filename flags — parsed once per file and cached.
 //

@@ -15,6 +15,7 @@ const Playlist = {
   seqIndex: 0, // next file to play when sequential
   hold: false, // true → sequential, but each video stops on its last frame until next is called
   shuffleAll: false, // true → one random pool made of the files of every playlist (see activateShuffleAll)
+  timing: null, // { images, videos } [min, max] of the active playlist, or null (see timeRange)
   scene: false, // true → the active playlist is a scene (see syncScene)
   fullFiles: new Set(), // files that belong to a "full" playlist (only used while shuffleAll is on)
 };
@@ -49,6 +50,7 @@ function activatePlaylist(index) {
   Playlist.texts = list.texts || {};
   Playlist.fullFiles = new Set();
   Playlist.scene = !!list.scene;
+  Playlist.timing = list.timing || null;
   Playlist.hold = !!list.hold;
   Playlist.sequential = !!list.sequential || Playlist.hold;
   Playlist.full = !!list.full || Playlist.sequential;
@@ -70,6 +72,7 @@ function activateShuffleAll(index) {
   Playlist.texts = Object.assign({}, ...lists.map((l) => l.texts || {}));
   Playlist.fullFiles = new Set(lists.filter((l) => l.full || l.sequential || l.hold).flatMap((l) => l.files || []));
   Playlist.scene = false;
+  Playlist.timing = null; // per-playlist timing does not apply to the mixed pool
   Playlist.hold = false;
   Playlist.sequential = false;
   Playlist.full = false;
@@ -135,6 +138,14 @@ function gotoPlaylist(index) {
   activatePlaylist(index);
   syncScene();
   restartPlayback();
+}
+
+// Seconds a picture or a video segment lasts: the playlist's own "images" / "videos" time if it has one,
+// otherwise the setting (Config). kind is "images" or "videos". Returns a random value in [min, max].
+function timeRange(kind) {
+  const own = Playlist.timing && Playlist.timing[kind];
+  const range = own ? { min: own[0], max: own[1] } : kind === "images" ? Config.IMAGE_DISPLAY_TIME : Config.VIDEO_SEGMENT_TIME;
+  return random(range.min, range.max);
 }
 
 // Indices of the playlists marked "scene": true in playlists.json (for the controller's scene list).

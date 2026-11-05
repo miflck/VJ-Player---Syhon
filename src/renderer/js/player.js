@@ -101,7 +101,7 @@ async function prepareVideo(slot, token) {
     // The only file of a full playlist restarts seamlessly by itself instead of being reloaded
     slot.loops = loop = Playlist.files.length <= 1 && !Playlist.hold;
   } else {
-    segment = getFlags(slot.filename).duration ?? random(Config.VIDEO_SEGMENT_TIME.min, Config.VIDEO_SEGMENT_TIME.max);
+    segment = getFlags(slot.filename).duration ?? timeRange("videos");
     if (segment > duration) {
       loop = true; // longer than the video: start at 0 and loop
     } else if (Config.VIDEO_WRAP) {
@@ -205,7 +205,7 @@ function advance() {
   } else if (!isFullPlayback(Player.current.filename)) {
     // Images and sketches. "full" playlists show them indefinitely; the user has to move on manually.
     const flagged = getFlags(Player.current.filename).duration;
-    scheduleAdvance(flagged ?? random(Config.IMAGE_DISPLAY_TIME.min, Config.IMAGE_DISPLAY_TIME.max));
+    scheduleAdvance(flagged ?? timeRange("images"));
   }
 
   preload();

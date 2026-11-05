@@ -151,3 +151,43 @@ byId("launch-layout").addEventListener("click", async () => {
   status.className = result.ok ? "status ok" : "status error";
   status.textContent = result.ok ? `Opening ${result.count} players…` : result.error;
 });
+
+// Timing: seconds [min, max] for pictures, video segments, text pages and keywords. Applied at once, saved to config.json.
+const TIMING_KEYS = Object.keys(TIMING_TARGETS);
+
+function fillTimingFields() {
+  for (const key of TIMING_KEYS) {
+    const range = Config[TIMING_TARGETS[key]];
+    byId(`t-${key}-min`).value = range.min;
+    byId(`t-${key}-max`).value = range.max;
+  }
+}
+
+async function saveTiming(timing, message) {
+  const status = byId("timing-status");
+  const result = await window.electronAPI.setTiming(timing);
+  if (result.ok) {
+    applyTiming(timing);
+    fillTimingFields();
+  }
+  status.className = result.ok ? "status ok" : "status error";
+  status.textContent = result.ok ? message : result.error;
+}
+
+byId("timing-apply").addEventListener("click", () => {
+  const timing = {};
+  for (const key of TIMING_KEYS) {
+    const min = parseFloat(byId(`t-${key}-min`).value);
+    const max = parseFloat(byId(`t-${key}-max`).value);
+    if (!(min >= 0) || !(max >= 0)) {
+      byId("timing-status").className = "status error";
+      byId("timing-status").textContent = "Times must be numbers of 0 or more.";
+      return;
+    }
+    timing[key] = [Math.min(min, max), Math.max(min, max)];
+  }
+  saveTiming(timing, "Saved. The next picture, video and word use it.");
+});
+
+byId("timing-reset").addEventListener("click", () => saveTiming({}, "Back to the defaults."));
+fillTimingFields();

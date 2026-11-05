@@ -60,6 +60,29 @@
         <p id="remote-status" class="status"></p>
       </section>
 
+      <section>
+        <h2>Timing <span class="hint">seconds, min – max</span></h2>
+        <p class="hint">A playlist's own times in playlists.json, and file name flags like @12s, win over these.</p>
+        <label>Images <span class="hint">(how long a picture stays)</span>
+          <span class="size-row"><input id="t-images-min" type="number" min="0" step="0.5"> – <input id="t-images-max" type="number" min="0" step="0.5"></span>
+        </label>
+        <label>Video segments <span class="hint">(length of the random part of a video)</span>
+          <span class="size-row"><input id="t-videos-min" type="number" min="0" step="0.5"> – <input id="t-videos-max" type="number" min="0" step="0.5"></span>
+        </label>
+        <label>Text pages <span class="hint">(text that fits without scrolling)</span>
+          <span class="size-row"><input id="t-texts-min" type="number" min="0" step="0.5"> – <input id="t-texts-max" type="number" min="0" step="0.5"></span>
+        </label>
+        <label>Keywords shown <span class="hint">(fully visible)</span>
+          <span class="size-row"><input id="t-wordHold-min" type="number" min="0" step="0.5"> – <input id="t-wordHold-max" type="number" min="0" step="0.5"></span>
+        </label>
+        <label>Keywords pause <span class="hint">(between two words)</span>
+          <span class="size-row"><input id="t-wordGap-min" type="number" min="0" step="0.5"> – <input id="t-wordGap-max" type="number" min="0" step="0.5"></span>
+        </label>
+        <button id="timing-apply" type="button" class="primary">Save</button>
+        <button id="timing-reset" type="button">Defaults</button>
+        <p id="timing-status" class="status"></p>
+      </section>
+
       <p class="keys">N / X playlist · → skip · A blackout · M circle · K keywords · F fullscreen · Y Syphon · L reload · E edit playlists</p>
       <p class="keys">S or Esc closes this screen · Esc with no settings open quits</p>
     </div>
