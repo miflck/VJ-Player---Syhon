@@ -60,7 +60,7 @@ function sketchHost() {
 
 // Creates the p5 instance and resolves once its setup() has run. The instance
 // is left paused (noLoop); stepSketch() redraws it on demand.
-function createSketchInstance(factory, url) {
+function createSketchInstance(factory, url, extra = {}) {
   return new Promise((resolve, reject) => {
     let instance = null;
 
@@ -80,6 +80,7 @@ function createSketchInstance(factory, url) {
           width: Math.round(width),
           height: Math.round(height),
           assetUrl: (name) => new URL(name, url).href, // files next to the sketch
+          ...extra,
         });
 
         const userSetup = p.setup;

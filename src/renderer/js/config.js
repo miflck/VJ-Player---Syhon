@@ -45,6 +45,7 @@ const Config = {
   COLOR_GAP: { min: 10, max: 40 }, // random colours ("D"): picture on
   COLOR_HOLD: { min: 1, max: 6 }, // random colours: colour shown
   COLOR_FILL_COLORS: null, // palette for the colour button ("C"); null = WORD_COLORS
+  WIPE_TIME: 1.6, // seconds a wipe lasts (the playlist changes in the middle of it)
   PRELOAD_RETRY_LIMIT: 5,
   PRELOAD_RETRY_DELAY: 250, // ms
 };

@@ -445,10 +445,26 @@ ipcMain.handle("get-media-files", async () => {
         wordFiles = wordFiles.concat(explicit.filter(isWordsFile));
       }
 
+      // Wipes: sketches that are drawn over the output as a transition. They come from the "wipes" folders / files of
+      // the entry, and from sketch files tagged @wipe in the playlist (those are not played as media).
+      const isWipeTagged = (f) => /@wipe\b/i.test(f);
+      let wipes = files.filter((f) => isSketchFile(f) && isWipeTagged(f));
+      files = files.filter((f) => !wipes.includes(f));
+      const wipeSources = [].concat(typeof entry.wipes === "string" ? [entry.wipes] : Array.isArray(entry.wipes) ? entry.wipes : []).filter((w) => typeof w === "string" && w);
+      for (const source of wipeSources) {
+        const other = configEntries.find((e) => e && e !== entry && e.name === source); // the name of another playlist: its sketches
+        if (other) {
+          if (other.folder) wipes = wipes.concat(await scanFolderForMedia(assetsPath, other.folder, true));
+          if (Array.isArray(other.files)) wipes = wipes.concat((await resolveExplicitFiles(assetsPath, other.files)).filter(isSketchFile));
+        } else if (isSketchFile(source)) wipes = wipes.concat(await resolveExplicitFiles(assetsPath, [source]));
+        else wipes = wipes.concat(await scanFolderForMedia(assetsPath, source, true));
+      }
+      wipes = [...new Set(wipes)];
+
       if (files.length > 0) {
         const words = await readWords(assetsPath, [...new Set(wordFiles)]);
         const texts = await readTexts(assetsPath, files);
-        playlists[entry.name] = { files, texts, full: entry.full === true, sequential: entry.sequential === true || entry.hold === true, hold: entry.hold === true, scene: entry.scene === true, excludeFromRandom: entry.excludeFromRandom === true || entry.scene === true, timing: { images: toRange(entry.images && entry.images.time), videos: toRange(entry.videos && entry.videos.time) }, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
+        playlists[entry.name] = { files, wipes, texts, full: entry.full === true, sequential: entry.sequential === true || entry.hold === true, hold: entry.hold === true, scene: entry.scene === true, excludeFromRandom: entry.excludeFromRandom === true || entry.scene === true, timing: { images: toRange(entry.images && entry.images.time), videos: toRange(entry.videos && entry.videos.time) }, words, wordOptions: entry.words && typeof entry.words === "object" ? entry.words : {} };
         order.push(entry.name);
       } else {
         console.warn(`Playlist "${entry.name}" has no valid media files — skipping`);

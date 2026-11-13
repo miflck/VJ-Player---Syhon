@@ -22,6 +22,9 @@ const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", 
 //   { playlist: 2 }   jump to a playlist by index
 //   { timing: { images: [3, 8] } }   change times live (keys: images videos texts wordHold wordGap, [min, max] seconds);
 //                     { timing: "reset" } goes back to what is saved in the player's settings
+//   { wipe: true }    the same random wipe on every player at once (the hub picks it from the wipes a player reports)
+//   { auto: 180 }     auto-rotate: spread the playlists over the players now, then move every player one playlist
+//                     on every 180 seconds (5–86400); { auto: false } stops it. Handled by the hub, not relayed.
 //   { scene: 2 }      toggle the scene that is playlist 2 (same as { playlist: 2 } on a scene playlist)
 // Either may carry "target": a player id (from the "players" list) to address only that
 // player; without it the command goes to every player.
@@ -32,6 +35,9 @@ function sanitizeCommand(cmd) {
   if (typeof cmd.key === "string" && REMOTE_KEYS.includes(cmd.key.toLowerCase())) clean = { key: cmd.key.toLowerCase() };
   else if (Number.isInteger(cmd.playlist) && cmd.playlist >= 0) clean = { playlist: cmd.playlist };
   else if (Number.isInteger(cmd.scene) && cmd.scene >= 0) clean = { scene: cmd.scene };
+  else if (cmd.wipe === true) clean = { wipe: true };
+  else if (cmd.auto === false) clean = { auto: false };
+  else if (typeof cmd.auto === "number" && cmd.auto >= 5 && cmd.auto <= 86400) clean = { auto: cmd.auto };
   else if (cmd.timing === "reset") clean = { timing: "reset" };
   else if (cmd.timing && typeof cmd.timing === "object") {
     const timing = {};
@@ -73,6 +79,48 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
   const io = new Server(server, { cors: { origin: true } });
   const players = new Map(); // socket id → last state
 
+  // Auto-rotate: every player gets its own playlist, then all move one place down the list every `seconds`.
+  let auto = { on: false, seconds: 180, nextAt: 0 };
+  let autoTimer = null;
+  const byName = (a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true });
+  const sendAuto = () => io.to("controllers").emit("auto", auto);
+  const autoPool = (p) => (Array.isArray(p.randomPool) && p.randomPool.length ? p.randomPool : (p.playlists || []).map((_, i) => i));
+
+  // One wipe file for everybody: from the first player that has wipes. Never the same twice in a row.
+  let lastWipe = null;
+  const pickWipe = () => {
+    const files = ([...players.values()].sort(byName).find((p) => Array.isArray(p.wipes) && p.wipes.length) || {}).wipes || [];
+    const options = files.length > 1 ? files.filter((f) => f !== lastWipe) : files;
+    return (lastWipe = options.length ? options[Math.floor(Math.random() * options.length)] : null);
+  };
+
+  const autoStep = (spread) => {
+    const list = [...players.values()].sort(byName);
+    const wipe = spread ? null : pickWipe(); // a wipe at every move, the playlist changes in its middle
+    list.forEach((p, i) => {
+      const pool = autoPool(p);
+      if (!pool.length) return;
+      const at = pool.indexOf(p.playlist);
+      // spread: player i → i-th playlist; later: the playlist after the one it is on (a player on one outside the pool joins at the start)
+      const index = spread ? pool[i % pool.length] : pool[(at + 1) % pool.length];
+      io.to(p.id).emit("command", wipe ? { wipe, playlist: index } : { playlist: index });
+    });
+    auto.nextAt = Date.now() + auto.seconds * 1000;
+    sendAuto();
+  };
+
+  const setAuto = (seconds) => {
+    clearInterval(autoTimer);
+    autoTimer = null;
+    auto = seconds ? { on: true, seconds, nextAt: Date.now() + seconds * 1000 } : { on: false, seconds: auto.seconds, nextAt: 0 };
+    if (seconds) {
+      autoStep(true);
+      autoTimer = setInterval(() => autoStep(false), seconds * 1000);
+    }
+    log(`[remote] auto-rotate ${seconds ? `every ${seconds}s` : "off"}`);
+    sendAuto();
+  };
+
   if (token) {
     io.use((socket, next) => (socket.handshake.auth?.token === token ? next() : next(new Error("unauthorized"))));
   }
@@ -110,6 +158,7 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
 
     socket.join("controllers");
     socket.emit("players", [...players.values()]);
+    socket.emit("auto", auto);
 
     socket.on("command", (cmd, ack) => {
       if (cmd && cmd.launch === "layout") {
@@ -119,6 +168,17 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
       }
       const clean = sanitizeCommand(cmd);
       if (!clean) return typeof ack === "function" && ack({ ok: false, error: "command not allowed" });
+
+      if (clean.wipe === true) {
+        const wipe = pickWipe();
+        if (!wipe) return typeof ack === "function" && ack({ ok: false, error: "no wipes (see \"wipes\" in playlists.json)" });
+        io.to("players").emit("command", { wipe });
+        return typeof ack === "function" && ack({ ok: true, players: players.size });
+      }
+      if ("auto" in clean) {
+        setAuto(clean.auto);
+        return typeof ack === "function" && ack({ ok: true, players: players.size });
+      }
 
       const { target, ...command } = clean;
       if (target && !players.has(target)) return typeof ack === "function" && ack({ ok: false, error: "player not connected" });
@@ -132,7 +192,7 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
 
   return new Promise((resolve, reject) => {
     server.once("error", reject);
-    server.listen(port, "0.0.0.0", () => resolve({ port, close: () => new Promise((done) => (io.close(), server.close(done))) }));
+    server.listen(port, "0.0.0.0", () => resolve({ port, close: () => new Promise((done) => (clearInterval(autoTimer), io.close(), server.close(done))) }));
   });
 }
 

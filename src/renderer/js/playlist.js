@@ -183,6 +183,14 @@ function leaveScene() {
   if (saved.colorFill !== !!App.colorFill) toggleColorFill();
 }
 
+// The wipes (transition sketches) of the active playlist; a playlist without any (and "shuffle all")
+// uses those of every playlist.
+function wipeFiles() {
+  const own = Playlist.shuffleAll ? [] : (Playlist.lists[Playlist.name] || {}).wipes || [];
+  if (own.length) return own;
+  return [...new Set(Object.values(Playlist.lists).flatMap((l) => l.wipes || []))];
+}
+
 // Picks one file at random, biased by each file's @w weight flag.
 function pickRandomFile() {
   if (Playlist.sequential && Playlist.files.length) {

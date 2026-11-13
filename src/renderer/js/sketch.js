@@ -109,7 +109,7 @@ function draw() {
   const flat = App.colorFill || App.randomColor; // flat colour over the output, if any
   const covered = dark || !!flat; // the media is hidden (a flat colour keeps the words, drawn on top of it)
   const showWords = App.wordsOn && !dark;
-  const isAnimated = (current && current.kind !== "image" && !covered) || (Words.text && showWords); // video, sketch or visible word
+  const isAnimated = (current && current.kind !== "image" && !covered) || (Words.text && showWords) || !!Wipe.slot; // video, sketch or visible word
   if (!isAnimated && !App.needsRedraw) {
     publishSyphon(false); // nothing changed on a still screen
     return;
@@ -127,6 +127,7 @@ function draw() {
     if (flat && Words.text && Words.color === flat) Words.color = Config.WORD_COLORS.find((c) => c !== flat) || Words.color;
     renderWords();
   }
+  renderWipe(); // on top of everything
 
   publishSyphon(true);
 }
@@ -175,6 +176,7 @@ const KEY_ACTIONS = {
   b: toggleRandomBlackouts, // random blackouts on/off
   c: toggleColorFill, // flat random colour on/off
   d: toggleRandomColors, // random colour flashes on/off
+  w: () => startWipe(), // a random wipe on this player
   k: () => (App.wordsOn = !App.wordsOn), // keywords (word layer) on / off
   m: () => (App.isMasked = !App.isMasked), // circle mask
   l: reloadPlaylists, // re-read playlists.json

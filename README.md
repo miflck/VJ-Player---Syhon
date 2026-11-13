@@ -330,6 +330,36 @@ registerSketch((p, { width, height, assetUrl }) => {
 - Sketches are JavaScript that runs inside the app with full access to its
   API. Only use sketches you trust. After editing one, press `L` to reload.
 
+### Wipes
+
+A wipe is a short transition drawn over the whole output (media, words and colours) for
+`WIPE_TIME` seconds (`Config`, default 1.6). It is a p5 sketch like the ones above, but it draws on a
+transparent canvas (`p.clear()`) and animates with `progress()`, which runs from 0 to 1. The output should
+be fully covered at 0.5, because that is the moment the playlist changes when a wipe comes with a
+playlist change (auto-rotate). See `examples/sketches/wipes/`.
+
+Say where a playlist's wipes are, in `playlists.json`:
+
+```json
+{ "name": "Kong", "folder": "kong", "wipes": ["wipes/bars", "wipes/circle"] }
+```
+
+A wipe does not have to use `progress()`: any ordinary sketch works, it is simply shown over the output for
+that time (opaque ones cover it, and the playlist changes underneath at the half). So the sketches of a
+scene playlist can be reused: `"wipes": ["WipeBlack"]` takes the sketches of the playlist with that name. `@4s`
+in a wipe's file or folder name sets its time in seconds instead of `WIPE_TIME`.
+
+`wipes` is one path or a list; a folder is scanned for sketches, a path to a `sketch.js` /
+`*.sketch.js` is used directly. Sketches tagged `@wipe` in a playlist's folder (`Bars@wipe/sketch.js`) are
+wipes of that playlist and are not played as media. A playlist without wipes (and "Shuffle all") uses the
+wipes of all playlists.
+
+- `W` starts a random wipe on this player.
+- The controller's **Wipe** button sends the *same* random wipe to every player (the hub picks it from the
+  wipes of the first player, never the same twice in a row). Command: `{ "wipe": true }`.
+- **Auto-rotate** does a wipe at every move, and each player changes its playlist in the middle of it.
+  Without any wipes it just changes the playlist.
+
 ### Circle mask
 
 The mask is off by default (`App.isMasked` in `config.js`). Press `M` to toggle a circular mask over the output: a circle with
@@ -386,6 +416,12 @@ switched without touching the others.
 controller ──command──▶ hub ──command──▶ every player
 controller ◀──players── hub ◀───state─── every player
 ```
+
+**Auto-rotate.** The controller's *Auto-rotate* button (with the interval in minutes, default 3) first
+spreads the playlists over the players (player 1 → first playlist, player 2 → second …), then every
+interval moves every player one playlist further down the list, looping at the end. Scenes and playlists
+with `excludeFromRandom` are skipped. It runs in the hub, so it keeps going when the controller page is
+closed; press the button again to stop. Command: `{ "auto": 180 }` (seconds, 5 or more) / `{ "auto": false }`.
 
 A command is `{ "key": "n" }` (same as pressing that key) or
 `{ "playlist": 2 }` (jump to that playlist). Add `"target": "<player id>"` (the
@@ -580,6 +616,7 @@ settings you use.
 | `E`         | Open `playlists.json` in your default editor            |
 | `F`         | Toggle fullscreen (half-width players fill half the screen, see below) |
 | `Y`         | Toggle Syphon output (macOS)                            |
+| `W`         | Wipe (random, this player only)                         |
 | `R`         | Shuffle all: random files from every playlist, on / off |
 | `Backspace` | Reload the app                                          |
 

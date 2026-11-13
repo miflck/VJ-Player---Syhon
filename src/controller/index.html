@@ -116,6 +116,13 @@
       <button id="spread" disabled>Spread playlists <small>player 1 → playlist 1, player 2 → playlist 2 …</small></button>
       <button id="spread-random" disabled>Random spread <small>a different playlist for every player</small></button>
     </div>
+    <div class="row" style="margin-top: var(--gap)">
+      <button id="wipe" disabled>Wipe <small>the same random wipe on every player</small></button>
+    </div>
+    <div class="row" style="margin-top: var(--gap)">
+      <button class="toggle" id="auto" disabled>Auto-rotate <small id="auto-info">spread now, then everyone moves one playlist on</small></button>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;flex:0 0 auto">every <input id="auto-min" type="number" min="0.1" step="0.5" value="3" inputmode="decimal" style="width:64px;min-height:44px;font-size:16px"> min</label>
+    </div>
   </section>
 
   <section>
@@ -277,6 +284,11 @@
     buttons.forEach((b) => (b.disabled = !ready));
     $("spread").disabled = !ready;
     $("spread-random").disabled = !ready;
+    $("wipe").disabled = !ready;
+    $("auto").disabled = !ready && !auto.on;
+    $("auto").classList.toggle("active", auto.on);
+    $("auto-info").textContent = auto.on ? `next move in ${Math.max(0, Math.round((auto.nextAt - Date.now()) / 1000))} s` : "spread now, then everyone moves one playlist on";
+    if (auto.on && document.activeElement !== $("auto-min")) $("auto-min").value = +(auto.seconds / 60).toFixed(2);
     $("timing-apply").disabled = !ready;
     $("timing-reset").disabled = !ready;
     setStatus(!connected ? "" : ready ? "on" : "warn",
@@ -358,6 +370,18 @@
     e.currentTarget.classList.add("sent");
     setTimeout(() => e.currentTarget.classList.remove("sent"), 120);
   });
+
+  $("wipe").addEventListener("click", (e) => send({ wipe: true }, e.currentTarget));
+
+  // Auto-rotate runs in the hub, so it keeps going when this page is closed.
+  let auto = { on: false, seconds: 180, nextAt: 0 };
+  $("auto").addEventListener("click", (e) => {
+    const seconds = Math.round(parseFloat($("auto-min").value) * 60);
+    if (!auto.on && !(seconds >= 5)) return setStatus("warn", "interval must be at least 5 seconds");
+    send({ auto: auto.on ? false : seconds }, e.currentTarget);
+  });
+  socket.on("auto", (a) => { auto = a; render(); });
+  setInterval(() => auto.on && render(), 1000);
 
   // Timing for every player at once. Changes are live only; the settings screen of a player saves them.
   const TIMING_ROWS = [["images", "Images"], ["videos", "Video segments"], ["texts", "Text pages"], ["wordHold", "Keywords shown"], ["wordGap", "Keywords pause"]];

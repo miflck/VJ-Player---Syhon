@@ -25,6 +25,8 @@ function handleRemoteCommand(command) {
 
   if (typeof command.key === "string" && REMOTE_KEYS.has(command.key)) {
     KEY_ACTIONS[command.key]();
+  } else if (typeof command.wipe === "string") {
+    startWipe(command.wipe, Number.isInteger(command.playlist) ? command.playlist : null); // from the hub: same wipe on every player
   } else if (Number.isInteger(command.playlist)) {
     gotoPlaylist(command.playlist);
   } else if (Number.isInteger(command.scene)) {
@@ -46,6 +48,7 @@ function publishRemoteState() {
     playlist: Playlist.index,
     scenes: sceneIndices(),
     randomPool: randomIndices(),
+    wipes: wipeFiles(),
     scene: App.scene,
     shuffleAll: Playlist.shuffleAll,
     file: Player.current ? Player.current.filename : null,
