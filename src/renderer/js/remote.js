@@ -25,6 +25,8 @@ function handleRemoteCommand(command) {
 
   if (typeof command.key === "string" && REMOTE_KEYS.has(command.key)) {
     KEY_ACTIONS[command.key]();
+  } else if (command.wipe === false) {
+    endWipe(false); // "Wipe off"
   } else if (typeof command.wipe === "string") {
     startWipe(command.wipe, Number.isInteger(command.playlist) ? command.playlist : null); // from the hub: same wipe on every player
   } else if (Number.isInteger(command.playlist)) {

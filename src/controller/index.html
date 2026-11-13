@@ -117,7 +117,8 @@
       <button id="spread-random" disabled>Random spread <small>a different playlist for every player</small></button>
     </div>
     <div class="row" style="margin-top: var(--gap)">
-      <button id="wipe" disabled>Wipe <small>the same random wipe on every player</small></button>
+      <button id="wipe" disabled>Wipe <small>the same random wipe on every player, stays on its last frame</small></button>
+      <button id="wipe-off" disabled>Wipe off <small>takes the held wipe away</small></button>
     </div>
     <div class="row" style="margin-top: var(--gap)">
       <button class="toggle" id="auto" disabled>Auto-rotate <small id="auto-info">spread now, then everyone moves one playlist on</small></button>
@@ -285,6 +286,7 @@
     $("spread").disabled = !ready;
     $("spread-random").disabled = !ready;
     $("wipe").disabled = !ready;
+    $("wipe-off").disabled = !ready;
     $("auto").disabled = !ready && !auto.on;
     $("auto").classList.toggle("active", auto.on);
     $("auto-info").textContent = auto.on ? `next move in ${Math.max(0, Math.round((auto.nextAt - Date.now()) / 1000))} s` : "spread now, then everyone moves one playlist on";
@@ -372,6 +374,7 @@
   });
 
   $("wipe").addEventListener("click", (e) => send({ wipe: true }, e.currentTarget));
+  $("wipe-off").addEventListener("click", (e) => send({ wipe: false }, e.currentTarget));
 
   // Auto-rotate runs in the hub, so it keeps going when this page is closed.
   let auto = { on: false, seconds: 180, nextAt: 0 };

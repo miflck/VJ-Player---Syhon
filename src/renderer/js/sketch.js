@@ -170,7 +170,7 @@ const KEY_ACTIONS = {
   escape: () => (App.showSettings ? closeSettings() : window.electronAPI.quitApp()), // closes settings, otherwise quits
   n: () => switchPlaylist(1),
   x: () => switchPlaylist(-1),
-  arrowright: advance, // skip to another random file within the playlist
+  arrowright: () => (releaseWipe(), advance()), // skip to another random file within the playlist
   a: () => (App.isBlackedOut = !App.isBlackedOut), // hides output without stopping playback
   r: toggleShuffleAll, // random files from all playlists on/off
   b: toggleRandomBlackouts, // random blackouts on/off

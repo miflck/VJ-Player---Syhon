@@ -447,18 +447,20 @@ ipcMain.handle("get-media-files", async () => {
 
       // Wipes: sketches that are drawn over the output as a transition. They come from the "wipes" folders / files of
       // the entry, and from sketch files tagged @wipe in the playlist (those are not played as media).
+      const isWipeFile = (f) => isSketchFile(f) || /\.(mp4|mov)$/i.test(f); // a wipe is a sketch or a video
       const isWipeTagged = (f) => /@wipe\b/i.test(f);
-      let wipes = files.filter((f) => isSketchFile(f) && isWipeTagged(f));
+      let wipes = files.filter((f) => isWipeFile(f) && isWipeTagged(f));
       files = files.filter((f) => !wipes.includes(f));
       const wipeSources = [].concat(typeof entry.wipes === "string" ? [entry.wipes] : Array.isArray(entry.wipes) ? entry.wipes : []).filter((w) => typeof w === "string" && w);
       for (const source of wipeSources) {
         const other = configEntries.find((e) => e && e !== entry && e.name === source); // the name of another playlist: its sketches
         if (other) {
-          if (other.folder) wipes = wipes.concat(await scanFolderForMedia(assetsPath, other.folder, true));
-          if (Array.isArray(other.files)) wipes = wipes.concat((await resolveExplicitFiles(assetsPath, other.files)).filter(isSketchFile));
-        } else if (isSketchFile(source)) wipes = wipes.concat(await resolveExplicitFiles(assetsPath, [source]));
-        else wipes = wipes.concat(await scanFolderForMedia(assetsPath, source, true));
+          if (other.folder) wipes = wipes.concat((await scanFolderForMedia(assetsPath, other.folder)).filter(isWipeFile));
+          if (Array.isArray(other.files)) wipes = wipes.concat((await resolveExplicitFiles(assetsPath, other.files)).filter(isWipeFile));
+        } else if (isWipeFile(source)) wipes = wipes.concat(await resolveExplicitFiles(assetsPath, [source]));
+        else wipes = wipes.concat((await scanFolderForMedia(assetsPath, source)).filter(isWipeFile));
       }
+      if (entry.wipe === true) wipes = wipes.concat(files.filter(isWipeFile)); // "wipe": true → the entry's own videos / sketches are wipes
       wipes = [...new Set(wipes)];
 
       if (files.length > 0) {

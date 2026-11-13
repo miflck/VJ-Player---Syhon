@@ -94,6 +94,7 @@ function randomIndices() {
 // "R": shuffle all on / off. Off returns to the playlist that was selected before.
 function toggleShuffleAll() {
   if (!Playlist.order.length) return;
+  releaseWipe();
   Playlist.shuffleAll = !Playlist.shuffleAll;
   activatePlaylist(Playlist.index);
   restartPlayback();
@@ -123,6 +124,7 @@ function switchPlaylist(direction) {
   const count = Playlist.order.length;
   if (count === 0) return;
 
+  releaseWipe();
   Playlist.shuffleAll = false; // picking a playlist leaves shuffle all
   activatePlaylist((Playlist.index + direction + count) % count);
   syncScene();
@@ -133,6 +135,7 @@ function switchPlaylist(direction) {
 // as the scene button: clicking the active scene again leaves the scene (see syncScene).
 function gotoPlaylist(index) {
   if (!Number.isInteger(index) || index < 0 || index >= Playlist.order.length) return;
+  releaseWipe();
   if (App.scene === index && Playlist.index === index) return leaveScene();
   Playlist.shuffleAll = false; // picking a playlist leaves shuffle all
   activatePlaylist(index);

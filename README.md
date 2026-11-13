@@ -332,33 +332,32 @@ registerSketch((p, { width, height, assetUrl }) => {
 
 ### Wipes
 
-A wipe is a short transition drawn over the whole output (media, words and colours) for
-`WIPE_TIME` seconds (`Config`, default 1.6). It is a p5 sketch like the ones above, but it draws on a
-transparent canvas (`p.clear()`) and animates with `progress()`, which runs from 0 to 1. The output should
-be fully covered at 0.5, because that is the moment the playlist changes when a wipe comes with a
-playlist change (auto-rotate). See `examples/sketches/wipes/`.
-
-Say where a playlist's wipes are, in `playlists.json`:
+A wipe is a video (`.mp4` / `.mov`) that plays once, from its start, over the whole output (media, words and
+colours) and then **stays on its last frame** until it is released. Typically a clip that ends on a flat colour.
+Put a few of them in a folder (say `w1.mp4`, `w2.mp4`, `w3.mp4`) and say where they are, in `playlists.json`:
 
 ```json
-{ "name": "Kong", "folder": "kong", "wipes": ["wipes/bars", "wipes/circle"] }
+{ "name": "Kong", "folder": "kong", "wipes": ["wipes"] }
 ```
 
-A wipe does not have to use `progress()`: any ordinary sketch works, it is simply shown over the output for
-that time (opaque ones cover it, and the playlist changes underneath at the half). So the sketches of a
-scene playlist can be reused: `"wipes": ["WipeBlack"]` takes the sketches of the playlist with that name. `@4s`
-in a wipe's file or folder name sets its time in seconds instead of `WIPE_TIME`.
+The easiest way: mark the folder's own entry with `"wipe": true`, e.g. `{ "name": "WipesBlack", "folder": "WipesBlack", "wipe": true }`. Its videos are then the wipes of every playlist that has none of its own (the entry stays a playlist too).
 
-`wipes` is one path or a list; a folder is scanned for sketches, a path to a `sketch.js` /
-`*.sketch.js` is used directly. Sketches tagged `@wipe` in a playlist's folder (`Bars@wipe/sketch.js`) are
-wipes of that playlist and are not played as media. A playlist without wipes (and "Shuffle all") uses the
-wipes of all playlists.
+`wipes` is one path or a list. A folder is scanned for videos (and sketches), a path to a file is used directly, and
+the name of another playlist takes the files of that playlist. Files tagged `@wipe` in a playlist's folder
+(`w1@wipe.mp4`) are wipes of that playlist and are not played as media. A playlist without wipes (and "Shuffle
+all") uses the wipes of all playlists, so one entry is enough.
 
-- `W` starts a random wipe on this player.
-- The controller's **Wipe** button sends the *same* random wipe to every player (the hub picks it from the
-  wipes of the first player, never the same twice in a row). Command: `{ "wipe": true }`.
-- **Auto-rotate** does a wipe at every move, and each player changes its playlist in the middle of it.
-  Without any wipes it just changes the playlist.
+- The controller's **Wipe** button starts *the same random wipe* on every player (the hub picks it from the wipes of
+  the first player, never the same twice in a row), all starting about together. **Wipe off** takes it away.
+  Command: `{ "wipe": true }` / `{ "wipe": false }`.
+- `W` starts a random wipe on this player only.
+- A held wipe is released by picking a playlist (`N`, `X`, a playlist button), by `→` (next media), by Wipe off, or
+  by another wipe, which takes over.
+- **Auto-rotate** does a wipe at every move: the wipe plays, and when it has ended the playlists change underneath,
+  then the wipe goes. Without any wipes the playlists just change.
+- A wipe can also be a p5 sketch (like the sketches above, on a transparent canvas, animated with `progress()` from 0 to
+  1, see `examples/sketches/wipes/`). It lasts `WIPE_TIME` seconds (`Config`, default 1.6) or the `@4s` of its name,
+  then disappears; with auto-rotate the playlists change in its middle.
 
 ### Circle mask
 

@@ -23,6 +23,7 @@ const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", 
 //   { timing: { images: [3, 8] } }   change times live (keys: images videos texts wordHold wordGap, [min, max] seconds);
 //                     { timing: "reset" } goes back to what is saved in the player's settings
 //   { wipe: true }    the same random wipe on every player at once (the hub picks it from the wipes a player reports)
+//   { wipe: false }   removes the wipe that is held on the last frame
 //   { auto: 180 }     auto-rotate: spread the playlists over the players now, then move every player one playlist
 //                     on every 180 seconds (5–86400); { auto: false } stops it. Handled by the hub, not relayed.
 //   { scene: 2 }      toggle the scene that is playlist 2 (same as { playlist: 2 } on a scene playlist)
@@ -36,6 +37,7 @@ function sanitizeCommand(cmd) {
   else if (Number.isInteger(cmd.playlist) && cmd.playlist >= 0) clean = { playlist: cmd.playlist };
   else if (Number.isInteger(cmd.scene) && cmd.scene >= 0) clean = { scene: cmd.scene };
   else if (cmd.wipe === true) clean = { wipe: true };
+  else if (cmd.wipe === false) clean = { wipe: false }; // takes the held wipe away (relayed to the players)
   else if (cmd.auto === false) clean = { auto: false };
   else if (typeof cmd.auto === "number" && cmd.auto >= 5 && cmd.auto <= 86400) clean = { auto: cmd.auto };
   else if (cmd.timing === "reset") clean = { timing: "reset" };
