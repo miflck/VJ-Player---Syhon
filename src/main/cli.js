@@ -8,6 +8,7 @@
 //   --syphon-name=<text> Syphon server name
 //   --assets=<folder>    assets folder (not saved)
 //   --window=<W>x<H>     visible window size, e.g. 960x540
+//   --fullscreen=<side>  start fullscreen: left or right half of the display, or full (handled in main.js)
 //   --output=<W>x<H>     output (canvas / Syphon) size, default 1920x1080, e.g. 960x1080
 //
 // (--instance=<name> is handled in main.js because it must run before the app starts.)

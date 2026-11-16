@@ -569,6 +569,7 @@ built-in defaults.
 | `--syphon-name=<text>` | Syphon server name |
 | `--assets=<folder>` | assets folder for this launch (not saved) |
 | `--window=<W>x<H>` | visible window size, e.g. `960x540` |
+| `--fullscreen=<side>` | start in fullscreen: `left` or `right` half of the display, or `full` |
 | `--output=<W>x<H>` | output (canvas / Syphon) size, default `1920x1080`, e.g. `960x1080` |
 
 ```bash

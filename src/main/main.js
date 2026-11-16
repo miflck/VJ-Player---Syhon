@@ -345,6 +345,16 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   mainWindow.on("page-title-updated", (event) => event.preventDefault()); // keep the instance title
 
+  // --fullscreen=left | right | full: start in fullscreen (left / right half of the display, or the whole one)
+  const startFullscreen = app.commandLine.getSwitchValue("fullscreen");
+  if (startFullscreen) {
+    mainWindow.once("ready-to-show", () => {
+      if (startFullscreen === "left" || startFullscreen === "right") setHalfFullscreen(true, startFullscreen);
+      else if (startFullscreen === "full") mainWindow.setFullScreen(true);
+      else console.warn(`--fullscreen=${startFullscreen} should be left, right or full`);
+    });
+  }
+
   // Open DevTools in development
   if (!app.isPackaged) {
     //mainWindow.webContents.openDevTools();
@@ -600,7 +610,7 @@ function wantsHalfFullscreen(display) {
   return output.width / output.height < (display.bounds.width / display.bounds.height) * 0.75;
 }
 
-function setHalfFullscreen(on) {
+function setHalfFullscreen(on, side = null) {
   if (!on) {
     mainWindow.setAlwaysOnTop(false);
     mainWindow.setBounds(halfFullscreenRestore);
@@ -610,7 +620,7 @@ function setHalfFullscreen(on) {
   const current = mainWindow.getBounds();
   const display = screen.getDisplayMatching(current);
   const d = display.bounds; // the whole display, not workArea: menu bar and Dock are covered
-  const left = current.x + current.width / 2 < d.x + d.width / 2;
+  const left = side ? side === "left" : current.x + current.width / 2 < d.x + d.width / 2; // side: "left" | "right", else where the window is
   const width = Math.round(d.width / 2);
   halfFullscreenRestore = current;
   mainWindow.setAlwaysOnTop(true, "screen-saver"); // above the menu bar and the Dock
