@@ -50,6 +50,7 @@ function publishRemoteState() {
     playlist: Playlist.index,
     scenes: sceneIndices(),
     randomPool: randomIndices(),
+    autoplay: autoplayIndices(),
     wipes: wipeFiles(),
     scene: App.scene,
     shuffleAll: Playlist.shuffleAll,

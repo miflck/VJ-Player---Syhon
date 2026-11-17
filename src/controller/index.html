@@ -113,7 +113,7 @@
     <h2 id="scenes-h" style="margin-top: var(--gap)" hidden>Scenes <small>random effects off · tap again to leave</small></h2>
     <div class="chips" id="scenes" hidden></div>
     <div class="row" style="margin-top: var(--gap)">
-      <button id="spread" disabled>Spread playlists <small>player 1 → playlist 1, player 2 → playlist 2 …</small></button>
+      <button id="spread" disabled>Spread playlists <small>player 1 → first playlist of the autoplay list, player 2 → second …</small></button>
       <button id="spread-random" disabled>Random spread <small>a different playlist for every player</small></button>
     </div>
     <div class="row" style="margin-top: var(--gap)">
@@ -346,9 +346,9 @@
   // (starts over when there are more players than playlists)
   $("spread").addEventListener("click", (e) => {
     const sorted = players; // already in name order
-    const count = (sorted[0] && sorted[0].playlists || []).length;
-    if (!count) return;
-    sorted.forEach((p, i) => send({ playlist: i % count, target: p.id }));
+    const list = (sorted[0] && sorted[0].autoplay) || []; // the playlists with "includeInAutoplay": true
+    if (!list.length) return setStatus("warn", 'no playlist has "includeInAutoplay": true');
+    sorted.forEach((p, i) => send({ playlist: list[i % list.length], target: p.id }));
     e.currentTarget.classList.add("sent");
     setTimeout(() => e.currentTarget.classList.remove("sent"), 120);
   });

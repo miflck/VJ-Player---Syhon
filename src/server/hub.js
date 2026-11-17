@@ -86,7 +86,7 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
   let autoTimer = null;
   const byName = (a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true });
   const sendAuto = () => io.to("controllers").emit("auto", auto);
-  const autoPool = (p) => (Array.isArray(p.randomPool) && p.randomPool.length ? p.randomPool : (p.playlists || []).map((_, i) => i));
+  const autoPool = (p) => (Array.isArray(p.autoplay) ? p.autoplay : []); // the playlists with "includeInAutoplay": true
 
   // One wipe file for everybody: from the first player that has wipes. Never the same twice in a row.
   let lastWipe = null;
@@ -178,6 +178,9 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
         return typeof ack === "function" && ack({ ok: true, players: players.size });
       }
       if ("auto" in clean) {
+        if (clean.auto && ![...players.values()].some((p) => autoPool(p).length)) {
+          return typeof ack === "function" && ack({ ok: false, error: "no playlist has \"includeInAutoplay\": true" });
+        }
         setAuto(clean.auto);
         return typeof ack === "function" && ack({ ok: true, players: players.size });
       }

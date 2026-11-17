@@ -103,9 +103,11 @@ either a `folder`, an explicit `files` list, or both:
   player remembers its own effects and puts them back when the scene is left — by tapping the
   scene again (in the controller's "Scenes" list or on the playlist button), or by moving to a
   playlist that is not a scene. The controller builds its "Scenes" list from these entries.
-- `excludeFromRandom` — optional boolean, default `false`. Set `"excludeFromRandom": true` to keep the playlist out of
-  "Shuffle all" (R) and the controller's "Random spread". It can still be picked by hand and used
-  by "Spread playlists". Scenes are always left out.
+- `includeInAutoplay` — optional boolean, default `false`. One list for everything that picks playlists by itself:
+  only playlists with `"includeInAutoplay": true` are used by **Auto-rotate**, "Shuffle all" (R) and the controller's
+  "Random spread". They can still be picked by hand. "Spread playlists" (player 1 → first of them, player 2 → second …) uses the same list and does nothing without the flag. If no playlist has the
+  flag, "Shuffle all" and "Random spread" use every playlist except those with `"excludeFromRandom": true` and
+  scenes (Auto-rotate does not start).
 - `images` / `videos` — optional, e.g. `"images": { "time": [3, 8] }`, `"videos": { "time": 10 }`. How
   long a picture stays / how long the random part of a video lasts in this playlist, in seconds
   (`[min, max]`, or one number for a fixed time). Not used by `full`, `sequential` and `hold` playlists
@@ -418,8 +420,8 @@ controller ◀──players── hub ◀───state─── every player
 
 **Auto-rotate.** The controller's *Auto-rotate* button (with the interval in minutes, default 3) first
 spreads the playlists over the players (player 1 → first playlist, player 2 → second …), then every
-interval moves every player one playlist further down the list, looping at the end. Scenes and playlists
-with `excludeFromRandom` are skipped. It runs in the hub, so it keeps going when the controller page is
+interval moves every player one playlist further down the list, looping at the end. Only playlists marked
+`"includeInAutoplay": true` in `playlists.json` take part; without any, auto-rotate does not start. It runs in the hub, so it keeps going when the controller page is
 closed; press the button again to stop. Command: `{ "auto": 180 }` (seconds, 5 or more) / `{ "auto": false }`.
 
 A command is `{ "key": "n" }` (same as pressing that key) or

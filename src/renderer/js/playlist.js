@@ -83,9 +83,17 @@ function activateShuffleAll(index) {
   log(`Active playlist: shuffle all (${Playlist.files.length} file(s) from ${lists.length} playlist(s))`);
 }
 
-// Indices of the playlists that take part in "shuffle all" and "random spread": every playlist except
-// scenes and those with "excludeFromRandom": true in playlists.json. If that would leave none, all of them.
+// Indices of the playlists with "includeInAutoplay": true in playlists.json. This is the list used by auto-rotate,
+// "shuffle all" and "random spread".
+function autoplayIndices() {
+  return Playlist.order.map((name, i) => (Playlist.lists[name] && Playlist.lists[name].includeInAutoplay ? i : -1)).filter((i) => i >= 0);
+}
+
+// Playlists that take part in "shuffle all" and "random spread": the autoplay list. If no playlist has the flag
+// (yet), every playlist except those with "excludeFromRandom": true, so the buttons keep working.
 function randomIndices() {
+  const flagged = autoplayIndices();
+  if (flagged.length) return flagged;
   const all = Playlist.order.map((_, i) => i);
   const picked = all.filter((i) => (Playlist.lists[Playlist.order[i]] || {}).excludeFromRandom !== true);
   return picked.length ? picked : all;
