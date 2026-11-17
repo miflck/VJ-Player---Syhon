@@ -63,6 +63,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   launchInstance: () => ipcRenderer.invoke("launch-instance"),
   launchLayout: () => ipcRenderer.invoke("launch-layout"),
   setTiming: (timing) => ipcRenderer.invoke("set-timing", timing),
+  setSide: (side) => ipcRenderer.invoke("set-side", side),
   setOutputSize: (size) => ipcRenderer.invoke("set-output-size", size),
   getRemoteInfo: () => ipcRenderer.invoke("get-remote-info"),
   setRemoteSettings: (request) => ipcRenderer.invoke("set-remote-settings", request),

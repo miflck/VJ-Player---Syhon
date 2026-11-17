@@ -142,7 +142,8 @@ clip3@w0.2.mp4     → weight 0.2 (in about one round out of five)
 
 Add `"sequential": true` to a playlist entry to play its files one after another
 in name order (`Reel_2` before `Reel_10`) instead of randomly, looping at the end.
-Sequential implies `"full"`: every video plays from start to end.
+Videos play from start to end, then the next file starts by itself. Pictures (and sketches) stay for the
+longest picture time (the max of `images` in the playlist, or of the Timing setting), then the next file comes.
 
 ```json
 { "name": "datadesignandart", "folder": "datadesignandart", "sequential": true }
@@ -150,12 +151,31 @@ Sequential implies `"full"`: every video plays from start to end.
 
 `→` skips to the next file in the order; re-selecting the playlist starts at the first.
 
-Use `"hold": true` instead (implies `"sequential"`) to have each video stop on its
-last frame when it ends. The next file only starts when you call next (`→`).
+Use `"hold": true` instead (implies `"sequential"`) to wait for you: each video stops on its
+last frame when it ends, each picture stays, and the next file only comes when you call next (`→`, or
+**Next media** in the controller). Like clicking through a presentation.
 
 ```json
 { "name": "datadesignandart", "folder": "datadesignandart", "hold": true }
 ```
+
+### Different files for the left and the right player
+
+Two players can use the same assets folder. Add `@left` or `@right` to a file's name and only the player on that
+side plays it; files without the tag play on both:
+
+```
+01_intro@left.mp4      only the left player
+01_intro@right.mp4     only the right player
+02_logo.png            both
+```
+
+A player knows its side from `--side=left|right`, or
+from the **Side** setting in the settings screen (`S`: Auto / Left / Right, saved in `config.json` as `"side"`).
+A player that does not know its side plays everything, tags ignored.
+For pairs that belong together use `"hold": true` or `"sequential": true` on the playlist, with the same name
+prefix on both files: each player then plays its own files in order, and next media moves both on together. In a
+random playlist the two players would draw independently, so the pairs would not match. Wipes ignore the tags.
 
 ### Custom clip duration
 
@@ -571,6 +591,7 @@ built-in defaults.
 | `--syphon-name=<text>` | Syphon server name |
 | `--assets=<folder>` | assets folder for this launch (not saved) |
 | `--window=<W>x<H>` | visible window size, e.g. `960x540` |
+| `--side=<side>` | `left` or `right`: this player plays files with `@left` / `@right` in their name (else the Side setting, else the side of `--fullscreen=left|right`) |
 | `--fullscreen=<side>` | start in fullscreen: `left` or `right` half of the display, or `full` |
 | `--output=<W>x<H>` | output (canvas / Syphon) size, default `1920x1080`, e.g. `960x1080` |
 

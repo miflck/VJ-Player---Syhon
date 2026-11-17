@@ -38,6 +38,9 @@ async function refreshSettings() {
     byId("output-height").value = Config.OUTPUT_HEIGHT;
   }
 
+  const side = byId("side-select");
+  if (document.activeElement !== side) window.electronAPI.getInstanceInfo().then((i) => (side.value = i.savedSide || ""));
+
   const info = await window.electronAPI.getRemoteInfo();
   setRemoteMode(info.mode);
   if (document.activeElement !== byId("hub-url")) byId("hub-url").value = info.url || "";
@@ -120,6 +123,16 @@ byId("remote-apply").addEventListener("click", applyRemoteSettings);
     if (event.key === "Enter") applyRemoteSettings();
   }),
 );
+
+// Which side this player is (for @left / @right files). Applies at once: the playlists are read again.
+byId("side-select").addEventListener("change", async () => {
+  const status = byId("side-status");
+  const result = await window.electronAPI.setSide(byId("side-select").value);
+  App.side = result.side;
+  status.className = "status ok";
+  status.textContent = result.side ? `This is the ${result.side} player.` : "Side unknown: every file plays.";
+  reloadPlaylists();
+});
 
 async function applyOutputSize() {
   const status = byId("output-status");

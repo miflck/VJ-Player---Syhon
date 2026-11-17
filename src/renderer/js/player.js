@@ -202,10 +202,11 @@ function advance() {
     playVideo(Player.current);
   } else if (Player.current.kind === "text") {
     Player.current.startedAt = millis(); // text.js moves on when the page has been shown to its end
-  } else if (!isFullPlayback(Player.current.filename)) {
-    // Images and sketches. "full" playlists show them indefinitely; the user has to move on manually.
+  } else if (imageAdvancesByItself(Player.current.filename)) {
+    // Images and sketches. "full" and "hold" playlists show them indefinitely; the user has to move on manually.
+    // A sequential playlist shows each for the longest picture time.
     const flagged = getFlags(Player.current.filename).duration;
-    scheduleAdvance(flagged ?? timeRange("images"));
+    scheduleAdvance(flagged ?? (Playlist.sequential ? maxImageTime() : timeRange("images")));
   }
 
   preload();

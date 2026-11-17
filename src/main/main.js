@@ -309,11 +309,29 @@ ipcMain.handle("set-timing", (_event, timing) => {
   return { ok: true };
 });
 
+// Which side of the screen this player is: "left", "right" or "" (unknown). Files with @left / @right in their
+// name only play on that side. From --side=<side>, else the side chosen in the settings screen ("side" in
+// config.json), else the side of --fullscreen=<side>.
+function playerSide() {
+  const pick = (v) => (/^(left|right)$/i.test(v || "") ? v.toLowerCase() : "");
+  return pick(app.commandLine.getSwitchValue("side")) || pick(settings && settings.side) || pick(app.commandLine.getSwitchValue("fullscreen"));
+}
+
+// Side chosen in the settings screen: "left", "right" or "" (auto). Saved to config.json, applies at once.
+ipcMain.handle("set-side", (_event, side) => {
+  const value = /^(left|right)$/.test(side) ? side : "";
+  if (value) userConfig.side = value;
+  else delete userConfig.side;
+  settings.side = value;
+  saveConfig();
+  return { ok: true, side: playerSide() };
+});
+
 // Names that depend on the instance. Syphon and window title can be overridden in
 // config.json: { "syphon": { "name": "..." } }
 function instanceInfo() {
   const label = instance ? `VJ Player ${instance}` : "VJ Player";
-  return { instance, title: label, syphonName: (settings.syphon && settings.syphon.name) || label, output: outputSize(), timing: timingSettings() };
+  return { instance, side: playerSide(), savedSide: (settings && settings.side) || "", title: label, syphonName: (settings.syphon && settings.syphon.name) || label, output: outputSize(), timing: timingSettings() };
 }
 
 function createWindow() {

@@ -11,6 +11,7 @@ const Playlist = {
   bag: [], // files still to come in the current random round, see refillBag
   lastPicked: null, // never picked twice in a row (when the playlist has more than one file)
   full: false, // true → play videos in full, show images indefinitely
+  explicitFull: false, // "full": true was written in playlists.json (a sequential playlist is full for videos only)
   sequential: false, // true → files play one after another in name order (implies full)
   seqIndex: 0, // next file to play when sequential
   hold: false, // true → sequential, but each video stops on its last frame until next is called
@@ -19,6 +20,14 @@ const Playlist = {
   scene: false, // true → the active playlist is a scene (see syncScene)
   fullFiles: new Set(), // files that belong to a "full" playlist (only used while shuffleAll is on)
 };
+
+// Files with @left / @right in their name only play on that side (see playerSide in main.js). Files without the tag
+// play on both; a player that does not know its side plays everything.
+function playsHere(file) {
+  const side = App.side;
+  const tag = (file.match(/@(left|right)\b/i) || [])[1];
+  return !side || !tag || tag.toLowerCase() === side;
+}
 
 // Fetches playlists.json. Returns false (and opens settings) if there are none.
 async function loadPlaylists() {
@@ -46,7 +55,7 @@ function activatePlaylist(index) {
   const list = Playlist.lists[name] || { files: [], full: false };
   Playlist.index = index;
   Playlist.name = name;
-  Playlist.files = list.files || [];
+  Playlist.files = (list.files || []).filter(playsHere);
   Playlist.texts = list.texts || {};
   Playlist.fullFiles = new Set();
   Playlist.scene = !!list.scene;
@@ -54,6 +63,7 @@ function activatePlaylist(index) {
   Playlist.hold = !!list.hold;
   Playlist.sequential = !!list.sequential || Playlist.hold;
   Playlist.full = !!list.full || Playlist.sequential;
+  Playlist.explicitFull = !!list.full;
   Playlist.seqIndex = 0;
   if (Playlist.sequential) Playlist.files = [...Playlist.files].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   Playlist.lastPicked = null;
@@ -68,7 +78,7 @@ function activateShuffleAll(index) {
   const lists = randomIndices().map((i) => Playlist.lists[Playlist.order[i]] || {});
   Playlist.index = index;
   Playlist.name = "Shuffle all";
-  Playlist.files = [...new Set(lists.flatMap((l) => l.files || []))];
+  Playlist.files = [...new Set(lists.flatMap((l) => l.files || []))].filter(playsHere);
   Playlist.texts = Object.assign({}, ...lists.map((l) => l.texts || {}));
   Playlist.fullFiles = new Set(lists.filter((l) => l.full || l.sequential || l.hold).flatMap((l) => l.files || []));
   Playlist.scene = false;
@@ -76,6 +86,7 @@ function activateShuffleAll(index) {
   Playlist.hold = false;
   Playlist.sequential = false;
   Playlist.full = false;
+  Playlist.explicitFull = false;
   Playlist.seqIndex = 0;
   Playlist.lastPicked = null;
   Playlist.bag = [];
@@ -157,6 +168,19 @@ function timeRange(kind) {
   const own = Playlist.timing && Playlist.timing[kind];
   const range = own ? { min: own[0], max: own[1] } : kind === "images" ? Config.IMAGE_DISPLAY_TIME : Config.VIDEO_SEGMENT_TIME;
   return random(range.min, range.max);
+}
+
+// The longest time of a picture: the max of the playlist's "images" time, or of the setting (Config).
+function maxImageTime() {
+  const own = Playlist.timing && Playlist.timing.images;
+  return own ? own[1] : Config.IMAGE_DISPLAY_TIME.max;
+}
+
+// Does a picture or sketch go on by itself after its time? Not in "hold" and "full" playlists and not with @full.
+// A "sequential" playlist does (it plays in order and shows each picture for the longest picture time).
+function imageAdvancesByItself(filename) {
+  if (getFlags(filename).full || Playlist.fullFiles.has(filename)) return false;
+  return !(Playlist.hold || Playlist.explicitFull);
 }
 
 // Indices of the playlists marked "scene": true in playlists.json (for the controller's scene list).

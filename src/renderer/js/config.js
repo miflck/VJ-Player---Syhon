@@ -52,6 +52,7 @@ const Config = {
 
 // UI-level state that isn't tied to playlists or playback.
 const App = {
+  side: (window.electronAPI.instance && window.electronAPI.instance.side) || "", // "left" | "right" | "": which @left / @right files play here
   assetsPath: "",
   showSettings: false,
   isBlackedOut: false, // "A" toggles this — hides output without stopping playback

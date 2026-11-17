@@ -21,6 +21,18 @@
       </section>
 
       <section>
+        <h2>Side</h2>
+        <label>Files with @left / @right in their name play on
+          <select id="side-select">
+            <option value="">Auto (from --side / --fullscreen, else both)</option>
+            <option value="left">Left player</option>
+            <option value="right">Right player</option>
+          </select>
+        </label>
+        <p id="side-status" class="status"></p>
+      </section>
+
+      <section>
         <h2>Output size</h2>
         <label>Width × Height
           <span class="size-row">
