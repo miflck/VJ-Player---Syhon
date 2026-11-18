@@ -137,15 +137,20 @@ async function reloadPlaylists() {
   restartPlayback();
 }
 
-// Cycles to the next (direction=1) or previous (direction=-1) playlist and
-// jumps straight into playing it.
+// Cycles to the next (direction=1) or previous (direction=-1) playlist and jumps straight into playing it.
+// Only the playlists of the autoplay list take part (randomIndices: "includeInAutoplay": true); from a playlist that
+// is not in it, the first (or last) of them comes. Playlists picked by hand (buttons) are not limited.
 function switchPlaylist(direction) {
-  const count = Playlist.order.length;
-  if (count === 0) return;
+  if (Playlist.order.length === 0) return;
+  const pool = randomIndices();
 
   releaseWipe();
   Playlist.shuffleAll = false; // picking a playlist leaves shuffle all
-  activatePlaylist((Playlist.index + direction + count) % count);
+  const next =
+    direction > 0
+      ? pool.find((i) => i > Playlist.index) ?? pool[0]
+      : [...pool].reverse().find((i) => i < Playlist.index) ?? pool[pool.length - 1];
+  activatePlaylist(next);
   syncScene();
   restartPlayback();
 }

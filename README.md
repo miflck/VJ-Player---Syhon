@@ -105,7 +105,7 @@ either a `folder`, an explicit `files` list, or both:
   playlist that is not a scene. The controller builds its "Scenes" list from these entries.
 - `includeInAutoplay` — optional boolean, default `false`. One list for everything that picks playlists by itself:
   only playlists with `"includeInAutoplay": true` are used by **Auto-rotate**, "Shuffle all" (R) and the controller's
-  "Random spread". They can still be picked by hand. "Spread playlists" (player 1 → first of them, player 2 → second …) uses the same list and does nothing without the flag. If no playlist has the
+  "Random spread" and the next / previous playlist buttons (`N` / `X`). They can still be picked by hand. "Spread playlists" (player 1 → first of them, player 2 → second …) uses the same list and does nothing without the flag. If no playlist has the
   flag, "Shuffle all" and "Random spread" use every playlist except those with `"excludeFromRandom": true` and
   scenes (Auto-rotate does not start).
 - `images` / `videos` — optional, e.g. `"images": { "time": [3, 8] }`, `"videos": { "time": 10 }`. How
@@ -627,8 +627,8 @@ settings you use.
 | ----------- | ------------------------------------------------------- |
 | `S`         | Open / close the settings screen                        |
 | `Esc`       | Close settings; if none are open, quit the app          |
-| `N`         | Next playlist                                           |
-| `X`         | Previous playlist                                       |
+| `N`         | Next playlist (only those with `includeInAutoplay`)     |
+| `X`         | Previous playlist (same list)                           |
 | `→` (Right) | Skip to another random file in this playlist            |
 | `A`         | Toggle blackout (hide output without stopping playback) |
 | `B`         | Toggle random blackouts (also a button in the controller; timing: `BLACKOUT_GAP` / `BLACKOUT_HOLD` in `config.js`) |
