@@ -62,13 +62,13 @@
     .players { display: flex; flex-direction: column; gap: 8px; }
     .player { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; min-width: 0; }
     .player b { font-weight: 600; }
-    .player .file { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+    .player .file { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .empty { color: var(--muted); font-size: 14px; }
 
     /* One block per connected client, below the shared "All players" controls. */
     .client { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
     .client h2 { margin: 0; color: var(--fg); font-size: 14px; }
-    .client .file { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+    .client .file { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .client button { background: var(--bg); min-height: 52px; }
     .client .chips button.current { background: var(--fg); }
     #clients { display: flex; flex-direction: column; gap: 20px; }
@@ -268,7 +268,9 @@
     });
     box.classList.toggle("collapsed", isCollapsed(name));
     box.append(head);
-    box.append(el("div", "file", (p.playlists ? `${p.playlists[p.playlist] ?? ""} · ` : "") + (p.file ? `${p.kind}: ${p.file}` : "nothing playing")));
+    const fileLine = el("div", "file", (p.playlists ? `${p.playlists[p.playlist] ?? ""} · ` : "") + (p.file ? `${p.kind}: ${p.file}` : "nothing playing"));
+    fileLine.title = fileLine.textContent;
+    box.append(fileLine);
 
     box.append(commandButton("Next media", { key: "arrowright" }, p.id));
     const shuffle = commandButton("Shuffle all", { key: "r" }, p.id, "toggle");
