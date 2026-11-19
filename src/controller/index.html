@@ -105,9 +105,6 @@
 
   <section>
     <h2>Media</h2>
-    <div class="row" style="margin-bottom: var(--gap)">
-      <button class="toggle" id="t-manual" disabled>Manual <small>T · all sequential, nothing random, nothing moves on by itself</small></button>
-    </div>
     <div class="row">
       <button class="primary" data-key="arrowright" disabled>Next media <small>→ another file in this playlist</small></button>
     </div>
@@ -119,19 +116,18 @@
       <button data-key="x" disabled>◀ Previous <small>X</small></button>
       <button data-key="n" disabled>Next ▶ <small>N</small></button>
     </div>
-    <div class="row" style="margin-top: var(--gap)">
-      <button class="toggle" id="t-shuffle" data-key="r" disabled>Shuffle all <small>R · random files from every playlist</small></button>
-    </div>
     <div class="chips" id="chips" style="margin-top: var(--gap)"></div>
     <h2 id="scenes-h" style="margin-top: var(--gap)" hidden>Scenes <small>random effects off · tap again to leave</small></h2>
     <div class="chips" id="scenes" hidden></div>
-    <div class="row" style="margin-top: var(--gap)">
-      <button id="spread" disabled>Spread playlists <small>player 1 → first playlist of the autoplay list, player 2 → second …</small></button>
-      <button id="spread-random" disabled>Random spread <small>a different playlist for every player</small></button>
+    <div class="row three" style="margin-top: var(--gap)">
+      <button id="spread" disabled>Spread playlists <small>1st, 2nd, 3rd …</small></button>
+      <button id="spread-random" disabled>Random spread <small>different for each</small></button>
+      <button class="toggle" id="t-shuffle" data-key="r" disabled>Shuffle all <small>R</small></button>
     </div>
-    <div class="row" style="margin-top: var(--gap)">
-      <button id="wipe" disabled>Wipe <small>the same random wipe on every player, stays on its last frame</small></button>
-      <button id="wipe-off" disabled>Wipe off <small>takes the held wipe away</small></button>
+    <div class="row three" style="margin-top: var(--gap)">
+      <button class="toggle" id="t-manual" disabled>Manual <small>T · all sequential</small></button>
+      <button id="wipe" disabled>Wipe <small>held on its last frame</small></button>
+      <button id="wipe-off" disabled>Wipe off <small>removes the wipe</small></button>
     </div>
     <div class="row" style="margin-top: var(--gap)">
       <button class="toggle" id="auto" disabled>Auto-rotate <small id="auto-info">spread now, then everyone moves one playlist on</small></button>
