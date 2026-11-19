@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, powerSaveBlocker, screen } = require("electron");
 const { startRemote } = require("./remote");
 const { applyCommandLine } = require("./cli");
-const path = require("path");
+const { setupSyncTray } = require("./syncTray");const path = require("path");
 const fs = require("fs").promises;
 const fsSync = require("fs");
 const { spawn } = require("child_process");
@@ -283,7 +283,7 @@ function outputSize() {
 }
 
 // Timing chosen in the settings screen (config.json "timing"): [min, max] seconds per kind.
-const TIMING_KEYS = ["images", "videos", "texts", "wordHold", "wordGap"];
+const TIMING_KEYS = ["images", "videos", "texts", "wordHold", "wordGap", "colorGap", "colorHold"];
 function toRange(value) {
   if (typeof value === "number" && value >= 0) return [value, value];
   if (Array.isArray(value) && value.length === 2 && value.every((n) => typeof n === "number" && n >= 0)) return [Math.min(...value), Math.max(...value)];
@@ -388,6 +388,7 @@ function createWindow() {
   });
 }
 
+let syncTray = null; // menu-bar icon (kept in a variable so it is not garbage collected)
 app.whenReady().then(() => {
   loadConfig(); // Load saved path before creating window
   const cli = applyCommandLine(userConfig, app.commandLine); // command-line options beat config.json
@@ -397,6 +398,11 @@ app.whenReady().then(() => {
     console.log("Assets folder from --assets:", assetsPath);
   }
   registerInstance();
+  if (!instance) syncTray = setupSyncTray({ // one menu-bar icon, not one per instance
+    getAssetsPath: () => assetsPath,
+    getTargets: () => ((userConfig.playlistSync && userConfig.playlistSync.targets) || []).filter((t) => typeof t === "string" && t),
+    configPath,
+  });
   powerSaveBlocker.start("prevent-display-sleep"); // keep the display on while the player runs
   createWindow();
   startRemote({

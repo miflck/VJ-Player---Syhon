@@ -60,7 +60,7 @@ function activatePlaylist(index) {
   Playlist.fullFiles = new Set();
   Playlist.scene = !!list.scene;
   Playlist.timing = list.timing || null;
-  Playlist.hold = !!list.hold;
+  Playlist.hold = !!list.hold || App.manual; // manual mode: every playlist is a hold playlist
   Playlist.sequential = !!list.sequential || Playlist.hold;
   Playlist.full = !!list.full || Playlist.sequential;
   Playlist.explicitFull = !!list.full;
@@ -94,6 +94,32 @@ function activateShuffleAll(index) {
   log(`Active playlist: shuffle all (${Playlist.files.length} file(s) from ${lists.length} playlist(s))`);
 }
 
+// "T": manual mode. Everything is sequential: every playlist plays its files in name order, nothing moves on by
+// itself (pictures stay, videos stop on their last frame, text pages stay) and the random effects are off
+// (shuffle all, random blackouts, random colours, flat colour). Next media / Next playlist click through.
+// The effects are remembered and put back when manual mode is left.
+function toggleManual() {
+  App.manual = !App.manual;
+  if (App.manual) {
+    App.savedManual = { shuffleAll: Playlist.shuffleAll, randomColors: App.randomColors, randomBlackouts: App.randomBlackouts, colorFill: !!App.colorFill };
+    Playlist.shuffleAll = false;
+    if (App.randomColors) toggleRandomColors();
+    if (App.randomBlackouts) toggleRandomBlackouts();
+    if (App.colorFill) toggleColorFill();
+  } else if (App.savedManual) {
+    const saved = App.savedManual;
+    App.savedManual = null;
+    Playlist.shuffleAll = saved.shuffleAll && !(Playlist.scene);
+    if (saved.randomColors !== App.randomColors) toggleRandomColors();
+    if (saved.randomBlackouts !== App.randomBlackouts) toggleRandomBlackouts();
+    if (saved.colorFill !== !!App.colorFill) toggleColorFill();
+  }
+  releaseWipe();
+  activatePlaylist(Playlist.index);
+  syncScene();
+  restartPlayback();
+}
+
 // Indices of the playlists with "includeInAutoplay": true in playlists.json. This is the list used by auto-rotate,
 // "shuffle all" and "random spread".
 function autoplayIndices() {
@@ -112,7 +138,7 @@ function randomIndices() {
 
 // "R": shuffle all on / off. Off returns to the playlist that was selected before.
 function toggleShuffleAll() {
-  if (!Playlist.order.length) return;
+  if (!Playlist.order.length || App.manual) return; // not in manual mode
   releaseWipe();
   Playlist.shuffleAll = !Playlist.shuffleAll;
   activatePlaylist(Playlist.index);

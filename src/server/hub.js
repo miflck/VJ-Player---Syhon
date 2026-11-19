@@ -15,13 +15,14 @@ const path = require("path");
 const { Server } = require("socket.io");
 
 // Keys a controller may press. They are the same keys as on the keyboard; players check this list again.
-const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", "y", "r", "k"];
+const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", "y", "r", "k", "t"];
 
 // Returns a clean command, or null if it is not allowed.
 //   { key: "n" }      press a key
 //   { playlist: 2 }   jump to a playlist by index
-//   { timing: { images: [3, 8] } }   change times live (keys: images videos texts wordHold wordGap, [min, max] seconds);
-//                     { timing: "reset" } goes back to what is saved in the player's settings
+//   { timing: { images: [3, 8] } }   change times live (keys: images videos texts wordHold wordGap colorGap colorHold, [min, max] seconds);
+//                     { timing: "reset" } goes back to what is saved in the player's settings;
+//                     { timing: "save" } saves the times the player uses now in its config.json
 //   { wipe: true }    the same random wipe on every player at once (the hub picks it from the wipes a player reports)
 //   { wipe: false }   removes the wipe that is held on the last frame
 //   { auto: 180 }     auto-rotate: spread the playlists over the players now, then move every player one playlist
@@ -40,10 +41,10 @@ function sanitizeCommand(cmd) {
   else if (cmd.wipe === false) clean = { wipe: false }; // takes the held wipe away (relayed to the players)
   else if (cmd.auto === false) clean = { auto: false };
   else if (typeof cmd.auto === "number" && cmd.auto >= 5 && cmd.auto <= 86400) clean = { auto: cmd.auto };
-  else if (cmd.timing === "reset") clean = { timing: "reset" };
+  else if (cmd.timing === "reset" || cmd.timing === "save") clean = { timing: cmd.timing };
   else if (cmd.timing && typeof cmd.timing === "object") {
     const timing = {};
-    for (const key of ["images", "videos", "texts", "wordHold", "wordGap"]) {
+    for (const key of ["images", "videos", "texts", "wordHold", "wordGap", "colorGap", "colorHold"]) {
       const r = cmd.timing[key];
       if (r === undefined) continue;
       if (!Array.isArray(r) || r.length !== 2 || !r.every((n) => typeof n === "number" && n >= 0 && n <= 3600)) return null;

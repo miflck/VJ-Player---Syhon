@@ -3,7 +3,7 @@
 //
 // A command is { key: "n" } (same as pressing that key) or { playlist: 2 }.
 
-const REMOTE_KEYS = new Set(["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", "y", "r", "k"]); // never e, s, escape, backspace
+const REMOTE_KEYS = new Set(["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", "y", "r", "k", "t"]); // never e, s, escape, backspace
 
 let lastRemoteState = "";
 const RemotePeers = new Set(); // files the other players show or have ready (from the hub); empty without a hub
@@ -33,6 +33,10 @@ function handleRemoteCommand(command) {
     gotoPlaylist(command.playlist);
   } else if (Number.isInteger(command.scene)) {
     gotoPlaylist(command.scene); // a scene is a playlist; same as picking its folder
+  } else if (command.timing === "save") {
+    // the live times become the saved ones (config.json), like "Save" in the settings screen
+    const timing = currentTiming();
+    window.electronAPI.setTiming(timing).then((result) => { if (result && result.ok) savedTiming = timing; });
   } else if (command.timing) {
     // live change from the controller: not saved, the settings screen's values come back with "reset" or a restart
     applyTiming(command.timing === "reset" ? savedTiming : { ...currentTiming(), ...command.timing });
@@ -54,6 +58,7 @@ function publishRemoteState() {
     wipes: wipeFiles(),
     scene: App.scene,
     shuffleAll: Playlist.shuffleAll,
+    manual: App.manual,
     file: Player.current ? Player.current.filename : null,
     next: Player.next ? Player.next.filename : null,
     kind: Player.current ? Player.current.kind : null,

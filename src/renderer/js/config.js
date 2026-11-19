@@ -64,6 +64,8 @@ const App = {
   randomBlackouts: false, // "B" toggles this — the output goes dark now and then, at random
   randomDark: false, // true while such a random blackout is on
   blackoutNextAt: 0, // millis() of the next switch between dark and visible
+  manual: false, // "T" toggles this — everything sequential, nothing random, nothing moves on by itself (see toggleManual)
+  savedManual: null, // the random effects as they were before manual mode
   scene: null, // playlist index of the active scene (null = not in a scene), see syncScene in playlist.js
   savedEffects: null, // the random effects as they were before the scene, put back when it is left
   isMasked: false, // "M" toggles this — circular mask (r = height/2), media contained within it
@@ -84,6 +86,8 @@ const TIMING_TARGETS = {
   texts: "TEXT_DISPLAY_TIME",
   wordHold: "WORD_HOLD",
   wordGap: "WORD_GAP",
+  colorGap: "COLOR_GAP",
+  colorHold: "COLOR_HOLD",
 };
 const TIMING_DEFAULTS = Object.fromEntries(Object.entries(TIMING_TARGETS).map(([key, name]) => [key, { ...Config[name] }]));
 

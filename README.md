@@ -461,6 +461,11 @@ socket.emit("command", { key: "arrowright" });
 Android/Chrome: menu → *Add to Home screen / Install app*. It starts fullscreen without browser bars and
 with the VJ icon; the token in the address is kept. The icons are `icon/AppIcon-controller.png` (scaled copies in `src/controller/`).
 
+**Sync playlists (menu bar).** The first VJ Player instance puts an icon in the macOS menu bar; *Sync playlists*
+copies the `playlists.json` of its assets folder into the folders listed in `config.json`:
+`"playlistSync": { "targets": ["/Users/me/Dropbox/left/Setlist", "/Users/me/Dropbox/right/Setlist"] }`
+(a notification shows how many copies worked). Replaces `sync-playlists.command`.
+
 **Host or client.** Press `S` and use the **Host / Client** buttons under
 *Remote control*. *Host* runs the hub and the controller page in this app;
 *Client* connects to a hub elsewhere, so you type its address (e.g.
@@ -638,7 +643,8 @@ settings you use.
 | `A`         | Toggle blackout (hide output without stopping playback) |
 | `B`         | Toggle random blackouts (also a button in the controller; timing: `BLACKOUT_GAP` / `BLACKOUT_HOLD` in `config.js`) |
 | `C`         | Toggle a flat colour over the output, picked at random from `WORD_COLORS` (or `COLOR_FILL_COLORS` in `config.js`) |
-| `D`         | Toggle random colours: now and then the output turns one flat colour for a while (timing: `COLOR_GAP` / `COLOR_HOLD` in `config.js`) |
+| `T`         | **Manual mode** (also a button in the controller): everything sequential, nothing random. Every playlist plays in name order and nothing moves on by itself (pictures stay, videos stop on their last frame, text pages stay); shuffle all, random blackouts, random colours and flat colour are switched off and put back when you leave it. Click through with Next media / Next playlist |
+| `D`         | Toggle random colours: now and then the output turns one flat colour for a while (timing: Timing in the settings screen, defaults `COLOR_GAP` / `COLOR_HOLD` in `config.js`) |
 | `M`         | Toggle circle mask (see below)                          |
 | `L`         | Reload `playlists.json` (pick up edits live)            |
 | `E`         | Open `playlists.json` in your default editor            |
@@ -696,7 +702,7 @@ cross-platform build requirements.
 
 Seconds for pictures, video segments, text pages and keywords (shown / pause) are set in the settings
 screen (`S` → Timing) and saved per player in `config.json` under `"timing"`
-(`{ "images": [2, 5], "videos": [2, 7], "texts": [8, 12], "wordHold": [1, 5], "wordGap": [2, 7] }`).
+(`{ "images": [2, 5], "videos": [2, 7], "texts": [8, 12], "wordHold": [1, 5], "wordGap": [2, 7], "colorGap": [10, 40], "colorHold": [1, 6] }`).
 Changes apply from the next picture, video or word. Priority, strongest first: file name flag
 (`@12s`, `@full`, `_x3`) → the playlist (`images`, `videos`, `words` in `playlists.json`) → the
 settings screen → the built-in defaults.

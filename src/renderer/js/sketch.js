@@ -182,6 +182,7 @@ const KEY_ACTIONS = {
   l: reloadPlaylists, // re-read playlists.json
   e: () => window.electronAPI.openPlaylistsConfig(), // open playlists.json in the default editor
   f: () => window.electronAPI.toggleFullscreen(),
+  t: toggleManual, // manual mode: all sequential, nothing random
   y: toggleSyphon, // Syphon output on/off
   backspace: () => window.location.reload(),
 };

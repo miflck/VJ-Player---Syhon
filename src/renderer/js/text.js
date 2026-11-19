@@ -81,7 +81,7 @@ function layoutText(slot, bounds) {
 // Moves on once the page has been shown completely. Call once per frame.
 function updateText() {
   const slot = Player.current;
-  if (!slot || slot.kind !== "text" || slot.finished) return;
+  if (!slot || slot.kind !== "text" || slot.finished || App.manual) return; // manual: the page stays until next
 
   const layout = layoutText(slot, outputBounds());
   if (millis() - slot.startedAt >= layout.duration) {

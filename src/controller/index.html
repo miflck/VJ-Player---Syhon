@@ -105,6 +105,9 @@
 
   <section>
     <h2>Media</h2>
+    <div class="row" style="margin-bottom: var(--gap)">
+      <button class="toggle" id="t-manual" disabled>Manual <small>T · all sequential, nothing random, nothing moves on by itself</small></button>
+    </div>
     <div class="row">
       <button class="primary" data-key="arrowright" disabled>Next media <small>→ another file in this playlist</small></button>
     </div>
@@ -157,6 +160,7 @@
     <div class="row">
       <button id="timing-apply" class="primary" disabled>Apply to all</button>
       <button id="timing-reset" disabled>Back to saved</button>
+      <button id="timing-save" disabled>Save on all players <small>applies these times and keeps them after a restart</small></button>
     </div>
   </section>
 
@@ -307,6 +311,7 @@
     buttons.forEach((b) => (b.disabled = !ready));
     $("spread").disabled = !ready;
     $("spread-random").disabled = !ready;
+    $("t-manual").disabled = !ready;
     $("wipe").disabled = !ready;
     $("wipe-off").disabled = !ready;
     $("auto").disabled = !ready && !auto.on;
@@ -315,6 +320,7 @@
     if (auto.on && document.activeElement !== $("auto-min")) $("auto-min").value = +(auto.seconds / 60).toFixed(2);
     $("timing-apply").disabled = !ready;
     $("timing-reset").disabled = !ready;
+    $("timing-save").disabled = !ready;
     setStatus(!connected ? "" : ready ? "on" : "warn",
       !connected ? "connecting…" : ready ? `${players.length} player${players.length > 1 ? "s" : ""}` : "no player");
 
@@ -333,6 +339,7 @@
       }
     }
     $("t-shuffle").classList.toggle("active", !!lead.shuffleAll);
+    $("t-manual").classList.toggle("active", players.length > 0 && players.every((p) => p.manual));
     $("t-random").classList.toggle("active", !!lead.randomBlackouts);
     $("t-color").classList.toggle("active", !!lead.colorFill);
     $("t-randcolor").classList.toggle("active", !!lead.randomColors);
@@ -398,6 +405,15 @@
     setTimeout(() => e.currentTarget.classList.remove("sent"), 120);
   });
 
+  // Manual mode on every player (also stops auto-rotate); players that already are in the wanted state are left alone
+  $("t-manual").addEventListener("click", (e) => {
+    const on = !players.every((p) => p.manual);
+    if (on && auto.on) send({ auto: false });
+    players.filter((p) => !!p.manual !== on).forEach((p) => send({ key: "t", target: p.id }));
+    e.currentTarget.classList.add("sent");
+    setTimeout(() => e.currentTarget.classList.remove("sent"), 120);
+  });
+
   $("wipe").addEventListener("click", (e) => send({ wipe: true }, e.currentTarget));
   $("wipe-off").addEventListener("click", (e) => send({ wipe: false }, e.currentTarget));
 
@@ -412,7 +428,7 @@
   setInterval(() => auto.on && render(), 1000);
 
   // Timing for every player at once. Changes are live only; the settings screen of a player saves them.
-  const TIMING_ROWS = [["images", "Images"], ["videos", "Video segments"], ["texts", "Text pages"], ["wordHold", "Keywords shown"], ["wordGap", "Keywords pause"]];
+  const TIMING_ROWS = [["images", "Images"], ["videos", "Video segments"], ["texts", "Text pages"], ["wordHold", "Keywords shown"], ["wordGap", "Keywords pause"], ["colorGap", "Random colours: picture on"], ["colorHold", "Random colours: colour shown"]];
   let timingDirty = false; // the fields were edited and not applied yet: do not overwrite them with the players' values
   $("timing-rows").replaceChildren(...TIMING_ROWS.map(([key, label]) => {
     const row = el("div", "trow");
@@ -437,6 +453,17 @@
     }
     timingDirty = false;
     send({ timing }, e.currentTarget);
+  });
+  $("timing-save").addEventListener("click", (e) => {
+    const timing = {};
+    for (const [key] of TIMING_ROWS) {
+      const min = parseFloat($(`tm-${key}-min`).value), max = parseFloat($(`tm-${key}-max`).value);
+      if (!(min >= 0) || !(max >= 0)) return setStatus("warn", "times must be numbers of 0 or more");
+      timing[key] = [Math.min(min, max), Math.max(min, max)];
+    }
+    timingDirty = false;
+    send({ timing }); // commands arrive in order: apply first, then save what is applied
+    send({ timing: "save" }, e.currentTarget);
   });
   $("timing-reset").addEventListener("click", (e) => {
     timingDirty = false;
