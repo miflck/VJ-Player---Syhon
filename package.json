@@ -43,6 +43,7 @@
     },
     "mac": {
       "category": "public.app-category.entertainment",
+      "icon": "buildResources/icon.icns",
       "target": [
         {
           "target": "dmg",

@@ -60,7 +60,10 @@ function sanitizeCommand(cmd) {
   return clean;
 }
 
-const CONTENT_TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css" };
+const CONTENT_TYPES = {
+  ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css",
+  ".webmanifest": "application/manifest+json", ".png": "image/png", ".svg": "image/svg+xml",
+};
 
 // onLaunchLayout (optional): called for { launch: "layout" }, which opens a set of new players
 // on the machine that hosts the hub. It is not relayed to the players.
@@ -68,12 +71,15 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
   const server = http.createServer((req, res) => {
     if (!staticDir) return res.writeHead(404).end();
 
-    const name = req.url.split("?")[0] === "/" ? "index.html" : path.basename(req.url.split("?")[0]);
+    const [urlPath, query] = req.url.split("?");
+    const name = urlPath === "/" ? "index.html" : path.basename(urlPath);
     const type = CONTENT_TYPES[path.extname(name)];
     if (!type) return res.writeHead(404).end();
 
     fs.readFile(path.join(staticDir, name), (error, data) => {
       if (error) return res.writeHead(404).end();
+      // the installed web app must start with the same ?token=… it was added with
+      if (name === "manifest.webmanifest") data = data.toString().replace("__START__", query ? `/?${query}` : "/");
       res.writeHead(200, { "Content-Type": type, "Cache-Control": "no-cache" }).end(data);
     });
   });

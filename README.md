@@ -456,6 +456,11 @@ const socket = io("http://192.168.2.8:3000", { auth: { role: "controller" } });
 socket.emit("command", { key: "arrowright" });
 ```
 
+**Add to phone home screen (fullscreen web app).** Open the controller page on the phone
+(`http://<ip>:3000/`, with `?token=…` if you use a token), then iPhone: Share → *Add to Home Screen*;
+Android/Chrome: menu → *Add to Home screen / Install app*. It starts fullscreen without browser bars and
+with the VJ icon; the token in the address is kept. The icons are `icon/AppIcon-controller.png` (scaled copies in `src/controller/`).
+
 **Host or client.** Press `S` and use the **Host / Client** buttons under
 *Remote control*. *Host* runs the hub and the controller page in this app;
 *Client* connects to a hub elsewhere, so you type its address (e.g.
