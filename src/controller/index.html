@@ -12,7 +12,6 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="VJ Remote">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script>document.getElementById("manifest").href = "manifest.webmanifest" + location.search;</script>
   <style>
     /* Made for a dark room and a thumb: big targets, high contrast, one accent. */
     :root {
@@ -167,7 +166,10 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
   // ?token=... in the address is sent to the hub when it requires one
-  const token = new URLSearchParams(location.search).get("token") || "";
+  // also accepted after the #: /#secret or /#token=secret
+  const hash = location.hash.slice(1);
+  const token = new URLSearchParams(location.search).get("token")
+    || (hash.includes("=") ? new URLSearchParams(hash).get("token") : decodeURIComponent(hash)) || "";
   const socket = io({ auth: { role: "controller", token } });
 
   const $ = (id) => document.getElementById(id);

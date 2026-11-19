@@ -78,8 +78,14 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
 
     fs.readFile(path.join(staticDir, name), (error, data) => {
       if (error) return res.writeHead(404).end();
-      // the installed web app must start with the same ?token=… it was added with
-      if (name === "manifest.webmanifest") data = data.toString().replace("__START__", query ? `/?${query}` : "/");
+      // the installed web app must start with the same token it was added with: the page links a
+      // manifest that carries the token, and the manifest's start_url carries it too (as ?token and #token)
+      const tokenFromQuery = new URLSearchParams(query || "").get("token");
+      if (name === "index.html" && query) data = data.toString().replace('href="manifest.webmanifest"', `href="manifest.webmanifest?${query}"`);
+      if (name === "manifest.webmanifest") {
+        const start = tokenFromQuery ? `/?token=${encodeURIComponent(tokenFromQuery)}#token=${encodeURIComponent(tokenFromQuery)}` : "/";
+        data = data.toString().replace("__START__", start);
+      }
       res.writeHead(200, { "Content-Type": type, "Cache-Control": "no-cache" }).end(data);
     });
   });
