@@ -507,10 +507,19 @@ ipcMain.handle("get-media-files", async () => {
       }
     }
 
-    return { playlists, order, configPath: path.join(assetsPath, PLAYLISTS_FILENAME) };
+    // "words.txt" / "*.words.txt" directly in the root: the word list used by "Shuffle all" (null = none)
+    let rootWordFiles = [];
+    try {
+      rootWordFiles = (await fs.readdir(assetsPath, { withFileTypes: true })).filter((e) => e.isFile() && isWordsFile(e.name)).map((e) => e.name);
+    } catch (error) {
+      /* unreadable root: no central list */
+    }
+    const shuffleWords = rootWordFiles.length ? await readWords(assetsPath, rootWordFiles) : null;
+
+    return { playlists, order, shuffleWords, configPath: path.join(assetsPath, PLAYLISTS_FILENAME) };
   } catch (error) {
     console.error("Error building playlists:", error);
-    return { playlists: {}, order: [], configPath: "" };
+    return { playlists: {}, order: [], shuffleWords: null, configPath: "" };
   }
 });
 

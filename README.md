@@ -255,6 +255,9 @@ Welcome to the Infotage
   in capitals, one word per line of text. The letters appear one after another
   (W, O, R, T …), stay for a few seconds, fade out together, then pause. Repeats in random order.
 - The words run on their own timeline, independent of the clips underneath.
+- A `words.txt` (or `*.words.txt`) directly in the root folder (next to `playlists.json`) is the word
+  list for "Shuffle all": it replaces the playlists' own words there. Without it, "Shuffle all" uses
+  the words of all playlists together. Single playlists always use their own words.
 - Switching playlists removes the text immediately; the new playlist shows its
   own words (or none, if it has no word list).
 - The text is part of the output (Syphon, blackout), but is not cut off by the

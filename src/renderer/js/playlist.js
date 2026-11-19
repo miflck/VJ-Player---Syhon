@@ -3,6 +3,7 @@
 
 const Playlist = {
   lists: {}, // { [name]: { files: string[], full: boolean, words: string[], wordOptions: object } }
+  shuffleWords: null, // words of the root "words.txt" (used by shuffle all), or null → the words of every playlist
   order: [], // ["Kong", "Space", ...] — cycling order
   index: 0,
   name: "",
@@ -34,6 +35,7 @@ async function loadPlaylists() {
   const data = await window.electronAPI.getMediaFiles();
   Playlist.lists = (data && data.playlists) || {};
   Playlist.order = (data && data.order) || [];
+  Playlist.shuffleWords = (data && data.shuffleWords) || null;
 
   log(`Loaded ${Playlist.order.length} playlist(s):`, Playlist.order);
 
@@ -90,7 +92,7 @@ function activateShuffleAll(index) {
   Playlist.seqIndex = 0;
   Playlist.lastPicked = null;
   Playlist.bag = [];
-  setWords(lists.flatMap((l) => l.words || []));
+  setWords(Playlist.shuffleWords || lists.flatMap((l) => l.words || [])); // a root words.txt replaces the playlists' words
   log(`Active playlist: shuffle all (${Playlist.files.length} file(s) from ${lists.length} playlist(s))`);
 }
 

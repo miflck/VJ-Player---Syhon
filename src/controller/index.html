@@ -409,6 +409,17 @@
     setTimeout(() => e.currentTarget.classList.remove("sent"), 120);
   });
 
+  // Keep the screen on while the controller is open (Screen Wake Lock, needs https; the browser drops it when the
+  // page is hidden, so it is asked for again when the page comes back)
+  let wakeLock = null;
+  async function keepAwake() {
+    if (!("wakeLock" in navigator) || document.visibilityState !== "visible" || (wakeLock && !wakeLock.released)) return;
+    try { wakeLock = await navigator.wakeLock.request("screen"); } catch (error) { /* refused, e.g. low power mode */ }
+  }
+  document.addEventListener("visibilitychange", keepAwake);
+  addEventListener("pointerdown", keepAwake); // in case the browser only allows it after a touch
+  keepAwake();
+
   // Manual mode on every player (also stops auto-rotate); players that already are in the wanted state are left alone
   $("t-manual").addEventListener("click", (e) => {
     const on = !players.some((p) => p.manual); // any player in manual mode → this click switches it off everywhere
