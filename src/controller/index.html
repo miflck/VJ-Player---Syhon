@@ -335,7 +335,7 @@
       }
     }
     $("t-shuffle").classList.toggle("active", !!lead.shuffleAll);
-    $("t-manual").classList.toggle("active", players.length > 0 && players.every((p) => p.manual));
+    $("t-manual").classList.toggle("active", players.some((p) => p.manual));
     $("t-random").classList.toggle("active", !!lead.randomBlackouts);
     $("t-color").classList.toggle("active", !!lead.colorFill);
     $("t-randcolor").classList.toggle("active", !!lead.randomColors);
@@ -403,7 +403,7 @@
 
   // Manual mode on every player (also stops auto-rotate); players that already are in the wanted state are left alone
   $("t-manual").addEventListener("click", (e) => {
-    const on = !players.every((p) => p.manual);
+    const on = !players.some((p) => p.manual); // any player in manual mode → this click switches it off everywhere
     if (on && auto.on) send({ auto: false });
     players.filter((p) => !!p.manual !== on).forEach((p) => send({ key: "t", target: p.id }));
     e.currentTarget.classList.add("sent");
