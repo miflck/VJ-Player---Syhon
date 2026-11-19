@@ -124,6 +124,10 @@
       <button id="spread-random" disabled>Random spread <small>different for each</small></button>
       <button class="toggle" id="t-shuffle" data-key="r" disabled>Shuffle all <small>R</small></button>
     </div>
+    <div class="row" style="margin-top: var(--gap)">
+      <button class="toggle" id="shufflewipe" disabled>Wipes in Shuffle all <small id="sw-info">same wipe on every shuffling player, then the next file</small></button>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;flex:0 0 auto">every <input id="sw-min" type="number" min="0.1" step="0.5" value="2" inputmode="decimal" style="width:64px;min-height:44px;font-size:16px"> min</label>
+    </div>
     <div class="row three" style="margin-top: var(--gap)">
       <button class="toggle" id="t-manual" disabled>Manual <small>T · all sequential</small></button>
       <button id="wipe" disabled>Wipe <small>held on its last frame</small></button>
@@ -308,6 +312,10 @@
     $("spread").disabled = !ready;
     $("spread-random").disabled = !ready;
     $("t-manual").disabled = !ready;
+    $("shufflewipe").disabled = !ready && !sw.on;
+    $("shufflewipe").classList.toggle("active", sw.on);
+    $("sw-info").textContent = sw.on ? `next wipe in ${Math.max(0, Math.round((sw.nextAt - Date.now()) / 1000))} s` : "same wipe on every shuffling player, then the next file";
+    if (sw.on && document.activeElement !== $("sw-min")) $("sw-min").value = +(sw.seconds / 60).toFixed(2);
     $("wipe").disabled = !ready;
     $("wipe-off").disabled = !ready;
     $("auto").disabled = !ready && !auto.on;
@@ -412,6 +420,16 @@
 
   $("wipe").addEventListener("click", (e) => send({ wipe: true }, e.currentTarget));
   $("wipe-off").addEventListener("click", (e) => send({ wipe: false }, e.currentTarget));
+
+  // Wipes in Shuffle all run in the hub too
+  let sw = { on: false, seconds: 120, nextAt: 0 };
+  $("shufflewipe").addEventListener("click", (e) => {
+    const seconds = Math.round(parseFloat($("sw-min").value) * 60);
+    if (!sw.on && !(seconds >= 5)) return setStatus("warn", "interval must be at least 5 seconds");
+    send({ shuffleWipe: sw.on ? false : seconds }, e.currentTarget);
+  });
+  socket.on("shuffleWipe", (s) => { sw = s; render(); });
+  setInterval(() => sw.on && render(), 1000);
 
   // Auto-rotate runs in the hub, so it keeps going when this page is closed.
   let auto = { on: false, seconds: 180, nextAt: 0 };

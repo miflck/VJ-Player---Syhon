@@ -98,10 +98,12 @@ function endWipe(finish = true) {
   invalidate();
 }
 
+// index -1: stay on the playlist (shuffle all) and go on to another file
 function changePlaylistUnderWipe(index) {
   Wipe.applying = true;
   try {
-    gotoPlaylist(index);
+    if (index === -1) advance();
+    else gotoPlaylist(index);
   } finally {
     Wipe.applying = false;
   }

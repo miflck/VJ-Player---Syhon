@@ -27,6 +27,8 @@ const REMOTE_KEYS = ["n", "x", "arrowright", "a", "b", "c", "d", "m", "l", "f", 
 //   { wipe: false }   removes the wipe that is held on the last frame
 //   { auto: 180 }     auto-rotate: spread the playlists over the players now, then move every player one playlist
 //                     on every 180 seconds (5–86400); { auto: false } stops it. Handled by the hub, not relayed.
+//   { shuffleWipe: 120 }  a wipe every 120 seconds (5–86400) on the players that are in "Shuffle all"; under the wipe they go
+//                     on to another file. { shuffleWipe: false } stops it. Handled by the hub, not relayed.
 //   { scene: 2 }      toggle the scene that is playlist 2 (same as { playlist: 2 } on a scene playlist)
 // Either may carry "target": a player id (from the "players" list) to address only that
 // player; without it the command goes to every player.
@@ -39,6 +41,8 @@ function sanitizeCommand(cmd) {
   else if (Number.isInteger(cmd.scene) && cmd.scene >= 0) clean = { scene: cmd.scene };
   else if (cmd.wipe === true) clean = { wipe: true };
   else if (cmd.wipe === false) clean = { wipe: false }; // takes the held wipe away (relayed to the players)
+  else if (cmd.shuffleWipe === false) clean = { shuffleWipe: false };
+  else if (typeof cmd.shuffleWipe === "number" && cmd.shuffleWipe >= 5 && cmd.shuffleWipe <= 86400) clean = { shuffleWipe: cmd.shuffleWipe };
   else if (cmd.auto === false) clean = { auto: false };
   else if (typeof cmd.auto === "number" && cmd.auto >= 5 && cmd.auto <= 86400) clean = { auto: cmd.auto };
   else if (cmd.timing === "reset" || cmd.timing === "save") clean = { timing: cmd.timing };
@@ -136,6 +140,26 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
     sendAuto();
   };
 
+  // Wipes in "Shuffle all": every `seconds` the players that are in shuffle all get the same wipe and move on to another file
+  // under it (playlist -1 = "next file"). Players that are not in shuffle all are left alone.
+  let shuffleWipe = { on: false, seconds: 120, nextAt: 0 };
+  let shuffleWipeTimer = null;
+  const sendShuffleWipe = () => io.to("controllers").emit("shuffleWipe", shuffleWipe);
+  const shuffleWipeStep = () => {
+    const wipe = pickWipe();
+    if (wipe) for (const p of players.values()) if (p.shuffleAll && !p.manual) io.to(p.id).emit("command", { wipe, playlist: -1 });
+    shuffleWipe.nextAt = Date.now() + shuffleWipe.seconds * 1000;
+    sendShuffleWipe();
+  };
+  const setShuffleWipe = (seconds) => {
+    clearInterval(shuffleWipeTimer);
+    shuffleWipeTimer = null;
+    shuffleWipe = seconds ? { on: true, seconds, nextAt: Date.now() + seconds * 1000 } : { on: false, seconds: shuffleWipe.seconds, nextAt: 0 };
+    if (seconds) shuffleWipeTimer = setInterval(shuffleWipeStep, seconds * 1000);
+    log(`[remote] shuffle wipes ${seconds ? `every ${seconds}s` : "off"}`);
+    sendShuffleWipe();
+  };
+
   if (token) {
     io.use((socket, next) => (socket.handshake.auth?.token === token ? next() : next(new Error("unauthorized"))));
   }
@@ -174,6 +198,7 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
     socket.join("controllers");
     socket.emit("players", [...players.values()]);
     socket.emit("auto", auto);
+    socket.emit("shuffleWipe", shuffleWipe);
 
     socket.on("command", (cmd, ack) => {
       if (cmd && cmd.launch === "layout") {
@@ -188,6 +213,11 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
         const wipe = pickWipe();
         if (!wipe) return typeof ack === "function" && ack({ ok: false, error: "no wipes (see \"wipes\" in playlists.json)" });
         io.to("players").emit("command", { wipe });
+        return typeof ack === "function" && ack({ ok: true, players: players.size });
+      }
+      if ("shuffleWipe" in clean) {
+        if (clean.shuffleWipe && !pickWipe()) return typeof ack === "function" && ack({ ok: false, error: "no wipes (see \"wipes\" in playlists.json)" });
+        setShuffleWipe(clean.shuffleWipe);
         return typeof ack === "function" && ack({ ok: true, players: players.size });
       }
       if ("auto" in clean) {
@@ -210,7 +240,7 @@ function startHub({ port = 3000, token = "", staticDir = null, onLaunchLayout = 
 
   return new Promise((resolve, reject) => {
     server.once("error", reject);
-    server.listen(port, "0.0.0.0", () => resolve({ port, close: () => new Promise((done) => (clearInterval(autoTimer), io.close(), server.close(done))) }));
+    server.listen(port, "0.0.0.0", () => resolve({ port, close: () => new Promise((done) => (clearInterval(autoTimer), clearInterval(shuffleWipeTimer), io.close(), server.close(done))) }));
   });
 }
 
