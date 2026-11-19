@@ -109,7 +109,8 @@ function draw() {
   const flat = App.colorFill || App.randomColor; // flat colour over the output, if any
   const covered = dark || !!flat; // the media is hidden (a flat colour keeps the words, drawn on top of it)
   const showWords = App.wordsOn && !dark;
-  const isAnimated = (current && current.kind !== "image" && !covered) || (Words.text && showWords) || !!Wipe.slot; // video, sketch or visible word
+  const panning = !covered && (panProgress(current) ?? 1) < 1; // a "@pan" image on its way
+  const isAnimated = panning || (current && current.kind !== "image" && !covered) || (Words.text && showWords) || !!Wipe.slot; // video, sketch or visible word
   if (!isAnimated && !App.needsRedraw) {
     publishSyphon(false); // nothing changed on a still screen
     return;

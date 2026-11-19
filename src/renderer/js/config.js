@@ -12,6 +12,7 @@ const Config = {
   VIDEO_WRAP: true, // a random segment may start anywhere and loop around the end of the clip
   VIDEO_VOLUME: 0.5,
   IMAGE_ZOOM_FACTOR: 1.05,
+  IMAGE_PAN_TIME: 30, // s: a "@pan" image that is shown indefinitely drifts across this long, then rests at its end
   // The canvas is always this size, whatever the window size; it is also the Syphon size.
   // Set in config.json ("output") or with --output=WxH; default 1920x1080.
   OUTPUT_WIDTH: (window.electronAPI.instance.output || {}).width || 1920,
@@ -111,6 +112,7 @@ function currentTiming() {
 //
 //   clip@w5.mp4      → weight 5 (5x more likely to be picked; default 1)
 //   clip@contain.mp4 → letterbox instead of fill/crop (default "cover")
+//   poster@pan.jpg   → image: slow camera move across the part that "cover" would crop (top→bottom / left→right), over its display time
 //   clip@color3.mp4  → words over this clip use the 3rd of Config.WORD_COLORS; clip@colorff00ff.mp4 → that hex colour
 //   page@bg2.txt     → text page on the 2nd of Config.TEXT_BACKGROUNDS; page@bgff00ff.txt → that hex colour
 //   clip@full.mp4    → this file plays in full (video to its end, image/sketch until skipped), whatever the playlist says
@@ -123,7 +125,7 @@ function currentTiming() {
 const flagCache = new Map();
 
 function getFlags(filename) {
-  if (!filename) return { kind: "image", weight: 1, fit: "cover", duration: null, full: false, color: null, bg: null };
+  if (!filename) return { kind: "image", weight: 1, fit: "cover", duration: null, full: false, pan: false, color: null, bg: null };
 
   let flags = flagCache.get(filename);
   if (!flags) {
@@ -164,6 +166,7 @@ function parseFlags(filename) {
     weight: weight > 0 ? weight : 1,
     fit: /@contain\b/i.test(filename) ? "contain" : "cover",
     full: /@full\b/i.test(filename),
+    pan: /@pan\b/i.test(filename),
     color: parseColorFlag(filename),
     bg: parseBgFlag(filename),
     duration,

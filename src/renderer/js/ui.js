@@ -15,7 +15,7 @@ function renderMedia(slot) {
     const media = slot.media;
     const mediaWidth = (slot.kind === "video" ? media.elt.videoWidth : media.width) || width;
     const mediaHeight = (slot.kind === "video" ? media.elt.videoHeight : media.height) || height;
-    draw = calculateDrawDimensions(mediaWidth, mediaHeight, slot.kind, getFlags(slot.filename).fit, bounds);
+    draw = calculateDrawDimensions(mediaWidth, mediaHeight, slot.kind, getFlags(slot.filename).fit, bounds, panProgress(slot));
   }
   const paint = () => (slot.kind === "text" ? drawText(slot, bounds) : drawMedia(slot, draw));
 
@@ -42,19 +42,28 @@ function drawMedia(slot, d) {
 
 // "contain" fits the whole media inside the bounds (letterbox); "cover" fills
 // the bounds and crops the overflow. Images (not videos or sketches) get a slight extra zoom when covering.
-function calculateDrawDimensions(mediaWidth, mediaHeight, kind, fit, bounds) {
+// "@pan" images: 0..1 while the slow camera move runs (null = not a panning image). Linear, so it reads as a steady drift.
+function panProgress(slot) {
+  if (!slot || slot.kind !== "image" || slot.panStart == null || !getFlags(slot.filename).pan) return null;
+  return Math.min(1, (millis() - slot.panStart) / (slot.panTime * 1000));
+}
+
+// With a pan progress, the overflowing axis is walked from its start (0) to its end (1) instead of being centred
+// (and the extra image zoom is dropped: the whole picture gets seen).
+function calculateDrawDimensions(mediaWidth, mediaHeight, kind, fit, bounds, pan = null) {
   const mediaIsWider = mediaWidth / mediaHeight > bounds.width / bounds.height;
   const matchWidth = (fit === "contain") === mediaIsWider;
 
   let scale = matchWidth ? bounds.width / mediaWidth : bounds.height / mediaHeight;
-  if (fit === "cover" && kind === "image") scale *= Config.IMAGE_ZOOM_FACTOR;
+  if (fit === "cover" && kind === "image" && pan === null) scale *= Config.IMAGE_ZOOM_FACTOR;
 
   const drawWidth = mediaWidth * scale;
   const drawHeight = mediaHeight * scale;
 
+  const t = fit === "cover" && pan !== null ? pan : 0.5; // 0.5 = centred
   return {
-    x: bounds.left + (bounds.width - drawWidth) / 2,
-    y: bounds.top + (bounds.height - drawHeight) / 2,
+    x: bounds.left + (bounds.width - drawWidth) * t,
+    y: bounds.top + (bounds.height - drawHeight) * t,
     width: drawWidth,
     height: drawHeight,
   };

@@ -206,11 +206,22 @@ function advance() {
     // Images and sketches. "full" and "hold" playlists show them indefinitely; the user has to move on manually.
     // A sequential playlist shows each for the longest picture time.
     const flagged = getFlags(Player.current.filename).duration;
-    scheduleAdvance(flagged ?? (Playlist.sequential ? maxImageTime() : timeRange("images")));
+    const seconds = flagged ?? (Playlist.sequential ? maxImageTime() : timeRange("images"));
+    scheduleAdvance(seconds);
+    startPan(Player.current, seconds);
+  } else {
+    startPan(Player.current, null); // shown indefinitely
   }
 
   preload();
   invalidate();
+}
+
+// "@pan" images drift across over the time they are shown (or Config.IMAGE_PAN_TIME when that is open-ended).
+function startPan(slot, seconds) {
+  if (slot.kind !== "image" || !getFlags(slot.filename).pan) return;
+  slot.panStart = millis();
+  slot.panTime = seconds ?? Config.IMAGE_PAN_TIME;
 }
 
 function stopCurrent() {

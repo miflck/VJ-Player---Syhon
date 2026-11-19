@@ -240,6 +240,19 @@ This can be combined with the other flags, e.g. `clip@contain@w5.mp4` fits
 the whole clip on screen _and_ makes it 5× as likely to be picked. To show a
 logo indefinitely, put `logo@contain.png` in a playlist with `"full": true`.
 
+### Slow camera move over an image (`@pan`)
+
+A tall poster on a 16:9 screen shows only a slice with `cover`. Add `@pan` to an
+image's filename and it drifts slowly across the cropped part instead: top → bottom
+for a portrait image, left → right for a very wide one. The move takes as long as the
+image is shown (the playlist's image time, or `@15s`); an image shown indefinitely
+(`full`, `hold`) drifts over `IMAGE_PAN_TIME` (30 s, in `Config`) and then rests at the end.
+
+```
+poster@pan.jpg       → camera move over the whole poster
+poster@pan@20s.jpg   → ... taking exactly 20 seconds
+```
+
 ### Word lists
 
 Put a text file named `words.txt` (or `anything.words.txt`) into a playlist's
