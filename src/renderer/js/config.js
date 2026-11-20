@@ -25,7 +25,7 @@ const Config = {
   WORD_SIZE: 0.16, // font size as a fraction of the output height
   WORD_FONT_FILE: "Everett-Bold-web.woff", // file in src/renderer/fonts/, e.g. "MyFont-Bold.woff2"; empty = Helvetica bold
   WORD_LETTER_DELAY: 0.02, // seconds between two letters appearing (W, O, R, T ...)
-  WORD_COLORS: ["#7e8afb", "#c8fa32", "#ffffff"], // each word picks one at random (never the same twice in a row)
+  WORD_COLORS: ["#9199FF", "#DBFF65", "#ffffff"], // each word picks one at random (never the same twice in a row)
   //WORD_COLORS: ["#ff0000", "#7e8afb", "#c8fa32", "#000000", "#ffffff"], // each word picks one at random (never the same twice in a row)
   WORD_LEADING: 0.9, // line height as a multiple of the font size (tight)
   WORD_SHADOW: false, // soft drop shadow behind the words
@@ -90,7 +90,9 @@ const TIMING_TARGETS = {
   colorGap: "COLOR_GAP",
   colorHold: "COLOR_HOLD",
 };
-const TIMING_DEFAULTS = Object.fromEntries(Object.entries(TIMING_TARGETS).map(([key, name]) => [key, { ...Config[name] }]));
+const TIMING_DEFAULTS = Object.fromEntries(
+  Object.entries(TIMING_TARGETS).map(([key, name]) => [key, { ...Config[name] }]),
+);
 
 function applyTiming(timing = {}) {
   for (const [key, name] of Object.entries(TIMING_TARGETS)) {
@@ -104,7 +106,9 @@ applyTiming(savedTiming);
 
 // The times in use right now, in the shape applyTiming and config.json use.
 function currentTiming() {
-  return Object.fromEntries(Object.entries(TIMING_TARGETS).map(([key, name]) => [key, [Config[name].min, Config[name].max]]));
+  return Object.fromEntries(
+    Object.entries(TIMING_TARGETS).map(([key, name]) => [key, [Config[name].min, Config[name].max]]),
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -125,7 +129,8 @@ function currentTiming() {
 const flagCache = new Map();
 
 function getFlags(filename) {
-  if (!filename) return { kind: "image", weight: 1, fit: "cover", duration: null, full: false, pan: false, color: null, bg: null };
+  if (!filename)
+    return { kind: "image", weight: 1, fit: "cover", duration: null, full: false, pan: false, color: null, bg: null };
 
   let flags = flagCache.get(filename);
   if (!flags) {
@@ -162,7 +167,13 @@ function parseFlags(filename) {
   else if (filename.includes("_LONG")) duration = Config.VIDEO_SEGMENT_TIME.min * 3;
 
   return {
-    kind: /(^|[./])sketch\.js$/i.test(filename) ? "sketch" : /\.(mp4|mov)$/i.test(filename) ? "video" : /\.txt$/i.test(filename) ? "text" : "image",
+    kind: /(^|[./])sketch\.js$/i.test(filename)
+      ? "sketch"
+      : /\.(mp4|mov)$/i.test(filename)
+        ? "video"
+        : /\.txt$/i.test(filename)
+          ? "text"
+          : "image",
     weight: weight > 0 ? weight : 1,
     fit: /@contain\b/i.test(filename) ? "contain" : "cover",
     full: /@full\b/i.test(filename),
